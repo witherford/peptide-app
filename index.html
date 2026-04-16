@@ -1237,7 +1237,7 @@ updateOnline();
 
 // ── Register service worker ──
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('/peptide-app/sw.js');
 }
 
 // ── On load: render any cached prices ──
