@@ -3,6 +3,7 @@
   "short_name": "Peptides",
   "description": "Peptide protocol reference — BPC-157, TB-500, GHK-Cu, Ipamorelin, CJC-1295, Selank, DSIP",
   "start_url": "/peptide-app/",
+  "scope": "/peptide-app/"
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0a0f1a",
