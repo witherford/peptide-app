@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0f1a">
+  <meta name="description" content="Peptide protocol reference — BPC-157, TB-500, GHK-Cu, Ipamorelin, CJC-1295, Selank, DSIP">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Peptides">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Peptide Reference</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #0a0f1a;
+      --bg2:       #111827;
+      --bg3:       #1a2236;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.12);
+      --text:      #e8edf5;
+      --text2:     #8b9ab5;
+      --text3:     #4d5f7a;
+      --green:     #5DCAA5;
+      --green-bg:  rgba(93,202,165,0.12);
+      --purple:    #7F77DD;
+      --purple-bg: rgba(127,119,221,0.12);
+      --amber:     #EF9F27;
+      --amber-bg:  rgba(239,159,39,0.12);
+      --blue:      #378ADD;
+      --blue-bg:   rgba(55,138,221,0.12);
+      --pink:      #D4537E;
+      --pink-bg:   rgba(212,83,126,0.12);
+      --red:       #D85A30;
+      --red-bg:    rgba(216,90,48,0.12);
+      --grey:      #B4B2A9;
+      --grey-bg:   rgba(180,178,169,0.12);
+      --accent:    #5DCAA5;
+      --radius:    12px;
+      --radius-sm: 6px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+    body { min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
+
+    /* ── Header ── */
+    .app-header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,15,26,0.92);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px 0;
+    }
+    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .header-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+    .header-title span { color: var(--accent); }
+    .install-btn {
+      display: none; align-items: center; gap: 6px;
+      background: var(--green-bg); color: var(--green);
+      border: 1px solid rgba(93,202,165,0.25);
+      border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all .2s;
+    }
+    .install-btn:hover { background: rgba(93,202,165,0.2); }
+    .install-btn.visible { display: flex; }
+
+    /* ── Nav tabs ── */
+    .nav-tabs {
+      display: flex; gap: 0; overflow-x: auto; scrollbar-width: none;
+      margin: 0 -20px; padding: 0 20px;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      flex-shrink: 0; padding: 8px 14px 11px;
+      font-size: 13px; font-weight: 500; color: var(--text3);
+      border-bottom: 2px solid transparent;
+      cursor: pointer; white-space: nowrap; transition: all .2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab:hover { color: var(--text2); }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+    /* ── Page ── */
+    .page { padding: 20px 16px 40px; max-width: 900px; margin: 0 auto; }
+    .stack-panel { display: none; }
+    .stack-panel.active { display: block; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .card-header { padding: 16px 16px 12px; border-bottom: 1px solid var(--border); }
+    .card-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .card-retailer { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; margin-bottom: 10px; }
+    .card-stats { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .card-stats li {
+      font-size: 12px; color: var(--text2);
+      padding-left: 14px; position: relative;
+    }
+    .card-stats li::before {
+      content: ''; position: absolute; left: 3px; top: 5px;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: currentColor; opacity: 0.4;
+    }
+
+    /* ── Price table ── */
+    .price-section { overflow-x: auto; }
+    .price-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 12px; font-family: 'JetBrains Mono', monospace;
+    }
+    .price-table thead th {
+      font-size: 10px; font-weight: 500; color: var(--text3);
+      text-align: left; padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg3); white-space: nowrap;
+    }
+    .price-table thead th.r { text-align: right; }
+    .price-table thead th.c { text-align: center; }
+    .price-table tbody tr { border-bottom: 1px solid var(--border); }
+    .price-table tbody tr:last-child { border-bottom: none; }
+    .price-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+    .price-table td { padding: 8px 10px; color: var(--text); vertical-align: middle; white-space: nowrap; }
+    .price-table td.r { text-align: right; }
+    .price-table td.c { text-align: center; }
+    .price-table td.sm { font-size: 10px; color: var(--text2); }
+    .price-table .total-row td {
+      font-weight: 600; border-top: 1px solid var(--border2);
+      background: var(--bg3);
+    }
+    .price-table .water-row td { color: var(--text2); }
+    .win { color: var(--green) !important; }
+    .lnk {
+      color: var(--blue); text-decoration: none; font-size: 10px;
+      font-family: 'DM Sans', sans-serif;
+      display: inline-flex; align-items: center; gap: 2px;
+    }
+    .lnk:hover { text-decoration: underline; }
+
+    /* ── Shopping list ── */
+    .shopping {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg3);
+    }
+    .shopping-title { font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--text2); }
+    .shopping-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .shopping-list li {
+      font-size: 12px; color: var(--text2);
+      padding-left: 16px; position: relative; display: flex; align-items: center;
+    }
+    .shopping-list li::before { content: '•'; position: absolute; left: 4px; color: var(--text3); }
+    .copy-btn {
+      margin-left: auto; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 2px 8px; font-size: 10px; color: var(--text2);
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .copy-btn:hover { color: var(--text); border-color: var(--border2); }
+    .copy-btn.copied { color: var(--green); border-color: rgba(93,202,165,0.3); }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 12px 16px; border-top: 1px solid var(--border);
+    }
+    .leg-item { display: flex; align-items: center; gap: 6px; }
+    .leg-swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .leg-item span { font-size: 11px; color: var(--text2); }
+
+    /* ── Schedule ── */
+    .schedule-section { padding: 12px 16px 16px; border-top: 1px solid var(--border); }
+    .schedule-title { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+    .week-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .week-row:last-child { margin-bottom: 0; }
+    .week-label {
+      font-size: 10px; font-weight: 500; color: var(--text3);
+      width: 44px; flex-shrink: 0; padding-top: 16px; text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .days-grid { display: flex; gap: 2px; flex: 1; }
+    .day-col { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .day-name { font-size: 9px; font-weight: 500; color: var(--text3); text-align: center; margin-bottom: 2px; }
+    .day-pill {
+      border-radius: 3px; display: flex; align-items: center; justify-content: center;
+      font-size: 8px; font-weight: 600; line-height: 1.2; text-align: center;
+      padding: 3px 1px; min-height: 28px;
+    }
+    .day-empty { min-height: 28px; border-radius: 3px; background: var(--bg3); }
+
+    /* ── Savings badge ── */
+    .savings-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--green-bg); color: var(--green);
+      border: 1px solid rgba(93,202,165,0.2);
+      border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 500;
+    }
+    .savings-badge.blue { background: var(--blue-bg); color: var(--blue); border-color: rgba(55,138,221,0.2); }
+
+    /* ── Offline banner ── */
+    .offline-banner {
+      display: none; position: fixed; bottom: calc(16px + env(safe-area-inset-bottom));
+      left: 50%; transform: translateX(-50%);
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 20px; padding: 8px 16px;
+      font-size: 12px; color: var(--text2); white-space: nowrap;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    .offline-banner.visible { display: block; }
+
+    /* ── Header action buttons ── */
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    .refresh-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--green-bg); color: var(--green);
+      border: 1px solid rgba(93,202,165,0.25);
+      border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all .2s; white-space: nowrap;
+    }
+    .refresh-btn:hover { background: rgba(93,202,165,0.22); }
+    .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .refresh-btn svg { transition: transform 0.7s ease; }
+    .refresh-btn.spinning svg { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .settings-btn {
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg3); color: var(--text2);
+      border: 1px solid var(--border);
+      border-radius: 20px; width: 30px; height: 30px;
+      cursor: pointer; transition: all .2s; flex-shrink: 0;
+    }
+    .settings-btn:hover { color: var(--text); border-color: var(--border2); }
+
+    /* ── Price fetch status ── */
+    .price-cell { position: relative; }
+    .price-live {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .price-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+      background: var(--green); box-shadow: 0 0 6px var(--green);
+    }
+    .price-dot.stale { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+    .price-dot.error { background: var(--red); box-shadow: none; }
+    .price-skeleton {
+      display: inline-block; width: 52px; height: 12px;
+      background: linear-gradient(90deg, var(--bg3) 25%, var(--bg2) 50%, var(--bg3) 75%);
+      background-size: 200% 100%; border-radius: 3px;
+      animation: shimmer 1.2s infinite;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    .price-updated {
+      font-size: 10px; color: var(--text3); margin-top: 2px; display: block;
+    }
+
+    /* ── Settings overlay ── */
+    .settings-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .25s;
+    }
+    .settings-overlay.open { opacity: 1; pointer-events: all; }
+
+    .settings-sheet {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 20px 20px 0 0;
+      width: 100%; max-width: 640px;
+      max-height: 88dvh; overflow-y: auto;
+      padding: 0 0 calc(20px + env(safe-area-inset-bottom));
+      transform: translateY(24px); transition: transform .25s ease;
+    }
+    .settings-overlay.open .settings-sheet { transform: translateY(0); }
+
+    .settings-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: var(--border2); margin: 12px auto 0;
+    }
+    .settings-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px 10px; border-bottom: 1px solid var(--border);
+    }
+    .settings-header h2 { font-size: 15px; font-weight: 600; }
+    .settings-close {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text2); border-radius: 50%; width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 16px; line-height: 1; transition: all .15s;
+    }
+    .settings-close:hover { color: var(--text); }
+
+    .settings-group { padding: 14px 20px 0; }
+    .settings-group-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text3); margin-bottom: 10px;
+    }
+    .settings-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 8px;
+    }
+    .settings-row-label {
+      font-size: 12px; font-weight: 500; color: var(--text); width: 110px; flex-shrink: 0;
+    }
+    .settings-row-label small { display: block; font-size: 10px; color: var(--text3); font-weight: 400; }
+    .settings-input {
+      flex: 1; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 6px 10px;
+      font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      color: var(--text); outline: none; transition: border-color .15s;
+      min-width: 0;
+    }
+    .settings-input:focus { border-color: var(--accent); }
+
+    .settings-save-btn {
+      display: block; width: calc(100% - 40px); margin: 16px 20px 0;
+      background: var(--green); color: #052e21;
+      border: none; border-radius: var(--radius-sm);
+      padding: 10px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .settings-save-btn:hover { filter: brightness(1.1); }
+    .settings-reset-btn {
+      display: block; width: calc(100% - 40px); margin: 8px 20px 0;
+      background: transparent; color: var(--text3);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 8px; font-size: 12px;
+      cursor: pointer; transition: all .15s;
+    }
+    .settings-reset-btn:hover { color: var(--text2); border-color: var(--border2); }
+
+    .price-fetch-summary {
+      font-size: 11px; color: var(--text2); padding: 6px 20px 0;
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .price-fetch-summary span { display: flex; align-items: center; gap: 4px; }
+    .price-fetch-summary .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .price-fetch-summary .dot.ok { background: var(--green); }
+    .price-fetch-summary .dot.err { background: var(--red); }
+
+    /* ── Section divider ── */
+    .section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text3); padding: 0 4px; margin-bottom: 10px; margin-top: 4px;
+    }
+
+    @media (min-width: 600px) {
+      .page { padding: 24px 24px 48px; }
+      .price-table { font-size: 13px; }
+      .day-pill { font-size: 9px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-top">
+    <div class="header-title">Peptide <span>Reference</span></div>
+    <div class="header-actions">
+      <button class="install-btn" id="installBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v13M8 12l4 4 4-4"/><path d="M3 19h18"/></svg>
+        Install
+      </button>
+      <button class="refresh-btn" id="refreshBtn" title="Fetch latest prices">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        Prices
+      </button>
+      <button class="settings-btn" id="settingsBtn" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+  <nav class="nav-tabs" id="navTabs">
+    <div class="tab active" data-panel="s1">Healing</div>
+    <div class="tab" data-panel="s2">Enhanced Healing</div>
+    <div class="tab" data-panel="s3">GH Sleep</div>
+    <div class="tab" data-panel="s4">Anxiety / Sleep</div>
+  </nav>
+</header>
+
+<main class="page">
+
+  <!-- ═══ STACK 1: Healing ═══ -->
+  <div class="stack-panel active" id="s1">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Healing stack — BPC-157 + TB-500</div>
+        <div class="card-retailer" style="color:#5DCAA5">Anglo Peptides · 3 × 10mg BPC-157 · 3 × 10mg TB-500</div>
+        <ul class="card-stats">
+          <li>Protocol length: 8 weeks</li>
+          <li>BPC-157 — 60 jabs · 500 mcg/day · 15 units on insulin syringe</li>
+          <li>TB-500 — 15 jabs · 2mg/dose · 60 units on insulin syringe</li>
+        </ul>
+      </div>
+
+      <div class="price-section">
+        <table class="price-table">
+          <thead><tr>
+            <th>Product</th><th>Qty</th>
+            <th class="r">uk-peptides</th><th class="r">Anglo</th>
+            <th class="r">uk-p £</th><th class="r">Anglo £</th>
+            <th class="c">uk-p link</th><th class="c">Anglo link</th>
+            <th class="c">Cheaper</th><th class="c">Doses</th><th class="c">Needles</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">BPC-157</td><td class="sm">30mg</td>
+              <td class="r sm">6 × 5mg</td><td class="r sm">3 × 10mg</td>
+              <td class="r price-cell" data-price-id="ukp-bpc157">£101.70</td><td class="r win price-cell" data-price-id="anglo-bpc157">£90.00</td>
+              <td class="c"><a class="lnk" id="lnk-ukp-bpc157" href="https://www.uk-peptides.com/bpc-157-5mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" id="lnk-anglo-bpc157" href="https://www.anglopeptides.co.uk/products/bpc-157-10mg-research-peptide-uk" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><span class="win" style="font-weight:600;font-size:11px">Anglo</span></td>
+              <td class="c sm">60</td><td class="c sm">60</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">TB-500</td><td class="sm">30mg</td>
+              <td class="r sm">6 × 5mg</td><td class="r sm">3 × 10mg</td>
+              <td class="r price-cell" data-price-id="ukp-tb500">£198.00</td><td class="r win price-cell" data-price-id="anglo-tb500">£96.00</td>
+              <td class="c"><a class="lnk" id="lnk-ukp-tb500" href="https://www.uk-peptides.com/tb-500-5mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" id="lnk-anglo-tb500" href="https://www.anglopeptides.co.uk/products/ghk-u-100mg-copy" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><span class="win" style="font-weight:600;font-size:11px">Anglo</span></td>
+              <td class="c sm">15</td><td class="c sm">15</td>
+            </tr>
+            <tr class="water-row">
+              <td style="font-weight:600">Bac water</td><td class="sm">10ml/vial</td>
+              <td class="r sm">4 × 10ml</td><td class="r sm">2 × 10ml</td>
+              <td class="r price-cell" data-price-id="ukp-bacwater">£23.80</td><td class="r price-cell" data-price-id="anglo-bacwater">£12.00</td>
+              <td class="c"><a class="lnk" id="lnk-ukp-bacwater" href="https://www.uk-peptides.com/10ml-bacteriostatic-water" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" id="lnk-anglo-bacwater" href="https://www.anglopeptides.co.uk/products/bac-water-10-ml" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td colspan="3"></td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="2">Grand total</td>
+              <td colspan="2"></td>
+              <td class="r">£323.50</td><td class="r win">£198.00</td>
+              <td colspan="2"></td>
+              <td class="c"><span class="savings-badge">Anglo saves £125.50</span></td>
+              <td colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="shopping">
+        <div class="shopping-title">Shopping list — Anglo Peptides <button class="copy-btn" data-list="s1-list">Copy</button></div>
+        <ul class="shopping-list" id="s1-list">
+          <li>3 × 10mg BPC-157</li>
+          <li>3 × 10mg TB-500</li>
+          <li>2 × 10ml vials of Bac water</li>
+          <li>75 × 1ml insulin syringes</li>
+          <li>75 × injection swabs</li>
+        </ul>
+      </div>
+
+      <div class="legend">
+        <div class="leg-item"><div class="leg-swatch" style="background:#5DCAA5"></div><span>BPC-157 — 500 mcg/day</span></div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#7F77DD"></div><span>TB-500 — 2mg/dose (Mon+Thu wks 1–4 · Mon only wks 5–8)</span></div>
+      </div>
+
+      <div class="schedule-section">
+        <div class="schedule-title">8-Week Schedule</div>
+        <div id="grid-s1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STACK 2: Enhanced Healing ═══ -->
+  <div class="stack-panel" id="s2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Enhanced healing stack — BPC-157 + TB-500 + GHK-Cu</div>
+        <div class="card-retailer" style="color:#5DCAA5">Anglo Peptides · 3 × 10mg BPC-157 · 3 × 10mg TB-500 · 2 × 50mg GHK-Cu</div>
+        <ul class="card-stats">
+          <li>Protocol length: ~15 weeks</li>
+          <li>BPC-157 — 60 jabs · 500 mcg/day · 15 units · stops at day 60</li>
+          <li>TB-500 — 15 jabs · 2mg/dose · 60 units · Mon+Thu wks 1–4 then Mon only</li>
+          <li>GHK-Cu — 100 jabs · 1mg/day · 6 units · runs all 100 days</li>
+        </ul>
+      </div>
+
+      <div class="price-section">
+        <table class="price-table">
+          <thead><tr>
+            <th>Product</th><th>Qty</th>
+            <th class="r">uk-peptides</th><th class="r">Anglo</th>
+            <th class="r">uk-p £</th><th class="r">Anglo £</th>
+            <th class="c">uk-p link</th><th class="c">Anglo link</th>
+            <th class="c">Cheaper</th><th class="c">Doses</th><th class="c">Needles</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">BPC-157</td><td class="sm">30mg</td>
+              <td class="r sm">6 × 5mg</td><td class="r sm">3 × 10mg</td>
+              <td class="r price-cell" data-price-id="ukp-bpc157">£101.70</td><td class="r win price-cell" data-price-id="anglo-bpc157">£90.00</td>
+              <td class="c"><a class="lnk" href="https://www.uk-peptides.com/bpc-157-5mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" href="https://www.anglopeptides.co.uk/products/bpc-157-10mg-research-peptide-uk" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><span class="win" style="font-weight:600;font-size:11px">Anglo</span></td>
+              <td class="c sm">60</td><td class="c sm">60</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">TB-500</td><td class="sm">30mg</td>
+              <td class="r sm">6 × 5mg</td><td class="r sm">3 × 10mg</td>
+              <td class="r price-cell" data-price-id="ukp-tb500">£198.00</td><td class="r win price-cell" data-price-id="anglo-tb500">£96.00</td>
+              <td class="c"><a class="lnk" href="https://www.uk-peptides.com/tb-500-5mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" href="https://www.anglopeptides.co.uk/products/ghk-u-100mg-copy" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><span class="win" style="font-weight:600;font-size:11px">Anglo</span></td>
+              <td class="c sm">15</td><td class="c sm">15</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">GHK-Cu</td><td class="sm">100mg</td>
+              <td class="r sm">2 × 50mg</td><td class="r sm">2 × 50mg</td>
+              <td class="r price-cell" data-price-id="ukp-ghkcu">£53.98</td><td class="r win price-cell" data-price-id="anglo-ghkcu">£50.00</td>
+              <td class="c"><a class="lnk" id="lnk-ukp-ghkcu" href="https://www.uk-peptides.com/ghk-cu-50mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" id="lnk-anglo-ghkcu" href="https://www.anglopeptides.co.uk/products/copy-ghk-cu-100mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><span class="win" style="font-weight:600;font-size:11px">Anglo</span></td>
+              <td class="c sm">100</td><td class="c sm">100</td>
+            </tr>
+            <tr class="water-row">
+              <td style="font-weight:600">Bac water</td><td class="sm">10ml/vial</td>
+              <td class="r sm">5 × 10ml</td><td class="r sm">3 × 10ml</td>
+              <td class="r price-cell" data-price-id="ukp-bacwater">£29.75</td><td class="r price-cell" data-price-id="anglo-bacwater">£18.00</td>
+              <td class="c"><a class="lnk" href="https://www.uk-peptides.com/10ml-bacteriostatic-water" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" href="https://www.anglopeptides.co.uk/products/bac-water-10-ml" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td colspan="3"></td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="2">Grand total</td>
+              <td colspan="2"></td>
+              <td class="r">£383.43</td><td class="r win">£254.00</td>
+              <td colspan="2"></td>
+              <td class="c"><span class="savings-badge">Anglo saves £129.43</span></td>
+              <td colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="shopping">
+        <div class="shopping-title">Shopping list — Anglo Peptides <button class="copy-btn" data-list="s2-list">Copy</button></div>
+        <ul class="shopping-list" id="s2-list">
+          <li>3 × 10mg BPC-157</li>
+          <li>3 × 10mg TB-500</li>
+          <li>2 × 50mg GHK-Cu</li>
+          <li>3 × 10ml vials of Bac water</li>
+          <li>175 × 1ml insulin syringes</li>
+          <li>175 × injection swabs</li>
+        </ul>
+      </div>
+
+      <div class="legend">
+        <div class="leg-item"><div class="leg-swatch" style="background:#5DCAA5"></div><span>BPC-157 — 500 mcg/day (days 1–60)</span></div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#7F77DD"></div><span>TB-500 — 2mg/dose (Mon+Thu wks 1–4 · Mon only wks 5–8)</span></div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#EF9F27"></div><span>GHK-Cu — 1mg/day (all 100 days)</span></div>
+      </div>
+
+      <div class="schedule-section">
+        <div class="schedule-title">15-Week Schedule</div>
+        <div id="grid-s2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STACK 3: GH Sleep ═══ -->
+  <div class="stack-panel" id="s3">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">GH sleep stack — Ipamorelin + CJC-1295 no DAC</div>
+        <div class="card-retailer" style="color:#378ADD">uk-peptides · 3 × 5mg Ipamorelin · 1 × 2mg CJC-1295</div>
+        <ul class="card-stats">
+          <li>Protocol length: ~11 weeks</li>
+          <li>Ipamorelin — 150 jabs · 100 mcg × 2/day · 6 units per injection</li>
+          <li>CJC-1295 — 20 jabs · 100 mcg × 2/week (Mon + Thu) · 15 units per injection</li>
+        </ul>
+      </div>
+
+      <div class="price-section">
+        <table class="price-table">
+          <thead><tr>
+            <th>Product</th><th>Qty</th>
+            <th class="r">uk-peptides</th><th class="r">Anglo</th>
+            <th class="r">uk-p £</th><th class="r">Anglo £</th>
+            <th class="c">uk-p link</th><th class="c">Anglo link</th>
+            <th class="c">Cheaper</th>
+            <th class="c">Doses</th><th class="c">Needles</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">Ipamorelin</td><td class="sm">15/20mg</td>
+              <td class="r sm">3 × 5mg</td><td class="r sm">2 × 10mg</td>
+              <td class="r win price-cell" data-price-id="ukp-ipamorelin">£62.85</td><td class="r price-cell" data-price-id="anglo-ipamorelin">£70.00</td>
+              <td class="c"><a class="lnk" id="lnk-ukp-ipamorelin" href="https://www.uk-peptides.com/ipamorelin-5mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" id="lnk-anglo-ipamorelin" href="https://www.anglopeptides.co.uk/products/ipamorelin-10mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><span style="color:var(--blue);font-weight:600;font-size:11px">uk-peptides</span></td>
+              <td class="c sm">150/200</td><td class="c sm">150</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">CJC-1295<br><span style="font-size:10px;font-weight:400;color:var(--text2)">no DAC</span></td><td class="sm">2/10mg</td>
+              <td class="r sm">1 × 2mg</td><td class="r sm">1 × 10mg</td>
+              <td class="r win price-cell" data-price-id="ukp-cjc1295">£12.95</td><td class="r price-cell" data-price-id="anglo-cjc1295">£40.00</td>
+              <td class="c"><a class="lnk" id="lnk-ukp-cjc1295" href="https://www.uk-peptides.com/cjc-1295-Mod-GRF" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" id="lnk-anglo-cjc1295" href="https://www.anglopeptides.co.uk/products/cjc-1295-without-dac-10mg-currently-no-label" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><span style="color:var(--blue);font-weight:600;font-size:11px">uk-peptides</span></td>
+              <td class="c sm">20/100</td><td class="c sm">20</td>
+            </tr>
+            <tr class="water-row">
+              <td style="font-weight:600">Bac water</td><td class="sm">10ml/vial</td>
+              <td class="r sm">2 × 10ml</td><td class="r sm">2 × 10ml</td>
+              <td class="r price-cell" data-price-id="ukp-bacwater">£11.90</td><td class="r price-cell" data-price-id="anglo-bacwater">£12.00</td>
+              <td class="c"><a class="lnk" href="https://www.uk-peptides.com/10ml-bacteriostatic-water" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" href="https://www.anglopeptides.co.uk/products/bac-water-10-ml" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td colspan="3"></td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="2">Grand total</td>
+              <td colspan="2"></td>
+              <td class="r win">£87.70</td><td class="r">£122.00</td>
+              <td colspan="2"></td>
+              <td class="c"><span class="savings-badge blue">uk-peptides saves £34.30</span></td>
+              <td colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="shopping">
+        <div class="shopping-title">Shopping list — uk-peptides <button class="copy-btn" data-list="s3-list">Copy</button></div>
+        <ul class="shopping-list" id="s3-list">
+          <li>3 × 5mg Ipamorelin</li>
+          <li>1 × 2mg CJC-1295 no DAC</li>
+          <li>2 × 10ml vials of Bac water</li>
+          <li>170 × 1ml insulin syringes</li>
+          <li>170 × injection swabs</li>
+        </ul>
+      </div>
+
+      <div class="legend">
+        <div class="leg-item"><div class="leg-swatch" style="background:#378ADD"></div><span>Ipamorelin — 100 mcg × 2/day (on waking + before bed)</span></div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#D4537E"></div><span>CJC-1295 no DAC — 100 mcg × 2/week (Mon + Thu)</span></div>
+      </div>
+
+      <div class="schedule-section">
+        <div class="schedule-title">11-Week Schedule</div>
+        <div id="grid-s3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STACK 4: Anxiety/Sleep ═══ -->
+  <div class="stack-panel" id="s4">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Anxiety and sleep stack — Selank + DSIP</div>
+        <div class="card-retailer" style="color:#378ADD">uk-peptides · 1 × 5mg DSIP · 1 × 5mg Selank</div>
+        <ul class="card-stats">
+          <li>Protocol length: 50 days</li>
+          <li>DSIP — 50 jabs · 100 mcg/night before bed · 6 units on insulin syringe</li>
+          <li>Selank — 20 days · 250 mcg/day · intranasal — no needle needed</li>
+        </ul>
+      </div>
+
+      <div class="price-section">
+        <table class="price-table">
+          <thead><tr>
+            <th>Product</th><th>Qty</th>
+            <th class="r">uk-peptides</th><th class="r">Anglo</th>
+            <th class="r">uk-p £</th><th class="r">Anglo £</th>
+            <th class="c">uk-p link</th><th class="c">Anglo link</th>
+            <th class="c">Cheaper</th>
+            <th class="c">Doses</th><th class="c">Needles</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">DSIP</td><td class="sm">5mg</td>
+              <td class="r sm">1 × 5mg</td><td class="r sm">1 × 5mg</td>
+              <td class="r price-cell" data-price-id="ukp-dsip">£16.00</td><td class="r price-cell" data-price-id="anglo-dsip">£16.00</td>
+              <td class="c"><a class="lnk" id="lnk-ukp-dsip" href="https://www.uk-peptides.com/dsip-5mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" id="lnk-anglo-dsip" href="https://www.anglopeptides.co.uk/products/dsip-5-mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><span style="color:var(--text2);font-weight:500;font-size:11px">Tie</span></td>
+              <td class="c sm">50/50</td><td class="c sm">50</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Selank</td><td class="sm">5/10mg</td>
+              <td class="r sm">1 × 5mg</td><td class="r sm">1 × 10mg</td>
+              <td class="r win price-cell" data-price-id="ukp-selank">£15.95</td><td class="r price-cell" data-price-id="anglo-selank">£31.00</td>
+              <td class="c"><a class="lnk" id="lnk-ukp-selank" href="https://www.uk-peptides.com/selank-5mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" id="lnk-anglo-selank" href="https://www.anglopeptides.co.uk/products/selank-10mg" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><span style="color:var(--blue);font-weight:600;font-size:11px">uk-peptides</span></td>
+              <td class="c sm">20/40¶</td><td class="c sm">—¶</td>
+            </tr>
+            <tr class="water-row">
+              <td style="font-weight:600">Bac water</td><td class="sm">10ml/vial</td>
+              <td class="r sm">1 × 10ml</td><td class="r sm">1 × 10ml</td>
+              <td class="r price-cell" data-price-id="ukp-bacwater">£5.95</td><td class="r price-cell" data-price-id="anglo-bacwater">£6.00</td>
+              <td class="c"><a class="lnk" href="https://www.uk-peptides.com/10ml-bacteriostatic-water" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td class="c"><a class="lnk" href="https://www.anglopeptides.co.uk/products/bac-water-10-ml" target="_blank" rel="noopener">Buy ↗</a></td>
+              <td colspan="3"></td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="2">Grand total</td>
+              <td colspan="2"></td>
+              <td class="r win">£43.85</td><td class="r">£59.00</td>
+              <td colspan="2"></td>
+              <td class="c"><span class="savings-badge blue">uk-peptides saves £15.15</span></td>
+              <td colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="shopping">
+        <div class="shopping-title">Shopping list — uk-peptides <button class="copy-btn" data-list="s4-list">Copy</button></div>
+        <ul class="shopping-list" id="s4-list">
+          <li>1 × 5mg DSIP</li>
+          <li>1 × 5mg Selank</li>
+          <li>1 × 10ml vial of Bac water</li>
+          <li>50 × 1ml insulin syringes</li>
+          <li>50 × injection swabs</li>
+        </ul>
+      </div>
+
+      <div class="legend">
+        <div class="leg-item"><div class="leg-swatch" style="background:#D85A30"></div><span>DSIP — 100 mcg/night injection (50 days)</span></div>
+        <div class="leg-item"><div class="leg-swatch" style="background:#B4B2A9"></div><span>Selank — 250 mcg/day intranasal, no needle (20 days)</span></div>
+      </div>
+
+      <div class="schedule-section">
+        <div class="schedule-title">8-Week Schedule</div>
+        <div id="grid-s4"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="offline-banner" id="offlineBanner">⚡ Offline — all data cached</div>
+
+<!-- ═══ Settings overlay ═══ -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-sheet" id="settingsSheet">
+    <div class="settings-handle"></div>
+    <div class="settings-header">
+      <h2>⚙️ Settings &amp; URLs</h2>
+      <button class="settings-close" id="settingsClose">✕</button>
+    </div>
+
+    <div class="price-fetch-summary" id="fetchSummary" style="display:none">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">uk-peptides.com — Product URLs</div>
+      <div class="settings-row">
+        <div class="settings-row-label">BPC-157 <small>5mg vials</small></div>
+        <input class="settings-input" data-url-key="ukp-bpc157" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">TB-500 <small>5mg vials</small></div>
+        <input class="settings-input" data-url-key="ukp-tb500" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">GHK-Cu <small>50mg vials</small></div>
+        <input class="settings-input" data-url-key="ukp-ghkcu" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Ipamorelin <small>5mg vials</small></div>
+        <input class="settings-input" data-url-key="ukp-ipamorelin" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">CJC-1295 <small>no DAC, 2mg</small></div>
+        <input class="settings-input" data-url-key="ukp-cjc1295" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">DSIP <small>5mg</small></div>
+        <input class="settings-input" data-url-key="ukp-dsip" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Selank <small>5mg</small></div>
+        <input class="settings-input" data-url-key="ukp-selank" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Bac Water <small>10ml</small></div>
+        <input class="settings-input" data-url-key="ukp-bacwater" type="url" spellcheck="false">
+      </div>
+    </div>
+
+    <div class="settings-group" style="margin-top:14px">
+      <div class="settings-group-label">anglopeptides.co.uk — Product URLs</div>
+      <div class="settings-row">
+        <div class="settings-row-label">BPC-157 <small>10mg vials</small></div>
+        <input class="settings-input" data-url-key="anglo-bpc157" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">TB-500 <small>10mg vials</small></div>
+        <input class="settings-input" data-url-key="anglo-tb500" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">GHK-Cu <small>100mg</small></div>
+        <input class="settings-input" data-url-key="anglo-ghkcu" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Ipamorelin <small>10mg vials</small></div>
+        <input class="settings-input" data-url-key="anglo-ipamorelin" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">CJC-1295 <small>no DAC, 10mg</small></div>
+        <input class="settings-input" data-url-key="anglo-cjc1295" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">DSIP <small>5mg</small></div>
+        <input class="settings-input" data-url-key="anglo-dsip" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Selank <small>10mg</small></div>
+        <input class="settings-input" data-url-key="anglo-selank" type="url" spellcheck="false">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Bac Water <small>10ml</small></div>
+        <input class="settings-input" data-url-key="anglo-bacwater" type="url" spellcheck="false">
+      </div>
+    </div>
+
+    <button class="settings-save-btn" id="settingsSave">Save URLs</button>
+    <button class="settings-reset-btn" id="settingsReset">Reset to defaults</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  DEFAULT URLs — edit these if a product page moves
+// ════════════════════════════════════════════════════════════
+const DEFAULT_URLS = {
+  'ukp-bpc157':    'https://www.uk-peptides.com/bpc-157-5mg',
+  'ukp-tb500':     'https://www.uk-peptides.com/tb-500-5mg',
+  'ukp-ghkcu':     'https://www.uk-peptides.com/ghk-cu-50mg',
+  'ukp-ipamorelin':'https://www.uk-peptides.com/ipamorelin-5mg',
+  'ukp-cjc1295':   'https://www.uk-peptides.com/cjc-1295-Mod-GRF',
+  'ukp-dsip':      'https://www.uk-peptides.com/dsip-5mg',
+  'ukp-selank':    'https://www.uk-peptides.com/selank-5mg',
+  'ukp-bacwater':  'https://www.uk-peptides.com/10ml-bacteriostatic-water',
+  'anglo-bpc157':  'https://www.anglopeptides.co.uk/products/bpc-157-10mg-research-peptide-uk',
+  'anglo-tb500':   'https://www.anglopeptides.co.uk/products/ghk-u-100mg-copy',
+  'anglo-ghkcu':   'https://www.anglopeptides.co.uk/products/copy-ghk-cu-100mg',
+  'anglo-ipamorelin':'https://www.anglopeptides.co.uk/products/ipamorelin-10mg',
+  'anglo-cjc1295': 'https://www.anglopeptides.co.uk/products/cjc-1295-without-dac-10mg-currently-no-label',
+  'anglo-dsip':    'https://www.anglopeptides.co.uk/products/dsip-5-mg',
+  'anglo-selank':  'https://www.anglopeptides.co.uk/products/selank-10mg',
+  'anglo-bacwater':'https://www.anglopeptides.co.uk/products/bac-water-10-ml',
+};
+
+// ── Storage helpers ──
+const LS_URLS   = 'peptide-urls-v1';
+const LS_PRICES = 'peptide-prices-v1';
+
+function loadUrls() {
+  try { return Object.assign({}, DEFAULT_URLS, JSON.parse(localStorage.getItem(LS_URLS) || '{}')); }
+  catch { return { ...DEFAULT_URLS }; }
+}
+function saveUrls(obj) { localStorage.setItem(LS_URLS, JSON.stringify(obj)); }
+function loadPrices() {
+  try { return JSON.parse(localStorage.getItem(LS_PRICES) || '{}'); }
+  catch { return {}; }
+}
+function savePrices(obj) { localStorage.setItem(LS_PRICES, JSON.stringify(obj)); }
+
+// ════════════════════════════════════════════════════════════
+//  PRICE SCRAPERS  — pure regex, no AI
+//  Each function receives the raw HTML string of the product
+//  page and returns a price string like "£12.95" or null.
+// ════════════════════════════════════════════════════════════
+
+// uk-peptides.com — Shopify store
+// Tries multiple Shopify price patterns
+function scrapeUkpPrice(html) {
+  const patterns = [
+    /"price"\s*:\s*(\d+)/,                         // JSON price in pence
+    /class="[^"]*price[^"]*"[^>]*>\s*£\s*([\d,.]+)/i,
+    /\bprice\b[^£]*£\s*([\d,.]+)/i,
+    /"price":\s*"£([\d,.]+)"/i,
+    /£\s*([\d]{1,3}(?:[.,]\d{2,3})*)/,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) {
+      let val = m[1].replace(/,/g, '');
+      // Shopify JSON prices are in pence (integers >100 likely pence if looks large)
+      const num = parseFloat(val);
+      if (!isNaN(num)) {
+        // Shopify stores price in pence as integer string e.g. 1295
+        if (re === patterns[0] && num >= 100) {
+          return '£' + (num / 100).toFixed(2);
+        }
+        return '£' + num.toFixed(2);
+      }
+    }
+  }
+  return null;
+}
+
+// anglopeptides.co.uk — Shopify store
+function scrapeAngloPrice(html) {
+  const patterns = [
+    /"price"\s*:\s*(\d+)/,
+    /class="[^"]*price[^"]*"[^>]*>\s*£\s*([\d,.]+)/i,
+    /\bprice\b[^£]*£\s*([\d,.]+)/i,
+    /£\s*([\d]{1,3}(?:[.,]\d{2,3})*)/,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) {
+      let val = m[1].replace(/,/g, '');
+      const num = parseFloat(val);
+      if (!isNaN(num)) {
+        if (re === patterns[0] && num >= 100) {
+          return '£' + (num / 100).toFixed(2);
+        }
+        return '£' + num.toFixed(2);
+      }
+    }
+  }
+  return null;
+}
+
+function scrapePrice(key, html) {
+  if (key.startsWith('ukp-'))   return scrapeUkpPrice(html);
+  if (key.startsWith('anglo-')) return scrapeAngloPrice(html);
+  return null;
+}
+
+// ════════════════════════════════════════════════════════════
+//  FETCH via CORS proxy
+// ════════════════════════════════════════════════════════════
+const PROXY = 'https://api.allorigins.win/get?url=';
+
+async function fetchPrice(key, url) {
+  const proxyUrl = PROXY + encodeURIComponent(url);
+  const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(18000) });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  const html = data.contents || '';
+  const price = scrapePrice(key, html);
+  if (!price) throw new Error('Price not found in page');
+  return price;
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER cached prices on load
+// ════════════════════════════════════════════════════════════
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+function renderCachedPrices() {
+  const prices = loadPrices();
+  const now = Date.now();
+  document.querySelectorAll('[data-price-id]').forEach(cell => {
+    const key = cell.dataset.priceId;
+    const entry = prices[key];
+    if (!entry) return;
+    const stale = (now - entry.ts) > 24 * 3600 * 1000; // >24h = stale
+    cell.innerHTML =
+      `<span class="price-live">
+        <span class="price-dot${stale ? ' stale' : ''}"></span>
+        ${entry.price}
+      </span>
+      <small class="price-updated">${timeAgo(entry.ts)}</small>`;
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  REFRESH BUTTON — fetch all prices
+// ════════════════════════════════════════════════════════════
+const refreshBtn = document.getElementById('refreshBtn');
+
+refreshBtn.addEventListener('click', async () => {
+  if (!navigator.onLine) {
+    showToast('⚡ No connection — showing cached prices');
+    return;
+  }
+  const urls = loadUrls();
+  const prices = loadPrices();
+
+  // Deduplicate keys (same product appears on multiple stack tabs)
+  const uniqueKeys = [...new Set(Object.keys(DEFAULT_URLS))];
+
+  refreshBtn.disabled = true;
+  refreshBtn.classList.add('spinning');
+
+  // Show skeletons on all price cells
+  document.querySelectorAll('[data-price-id]').forEach(cell => {
+    cell.innerHTML = '<span class="price-skeleton"></span>';
+  });
+
+  let ok = 0, fail = 0;
+  const results = {};
+
+  await Promise.allSettled(
+    uniqueKeys.map(async key => {
+      const url = urls[key];
+      if (!url) return;
+      try {
+        const price = await fetchPrice(key, url);
+        results[key] = { price, ts: Date.now(), ok: true };
+        ok++;
+      } catch (e) {
+        results[key] = { price: prices[key]?.price || '—', ts: prices[key]?.ts || 0, ok: false, err: e.message };
+        fail++;
+      }
+    })
+  );
+
+  // Merge with saved prices (keep old if new fetch failed and we had a cached value)
+  const merged = { ...prices };
+  for (const [k, v] of Object.entries(results)) {
+    if (v.ok) merged[k] = { price: v.price, ts: v.ts };
+    else if (!merged[k]) merged[k] = { price: '—', ts: 0 };
+  }
+  savePrices(merged);
+  renderCachedPrices();
+
+  // Update fetch summary in settings
+  updateFetchSummary(ok, fail);
+
+  refreshBtn.disabled = false;
+  refreshBtn.classList.remove('spinning');
+
+  const msg = fail === 0
+    ? `✓ All ${ok} prices updated`
+    : `Updated ${ok} — ${fail} failed (showing cached)`;
+  showToast(msg);
+});
+
+// ════════════════════════════════════════════════════════════
+//  SETTINGS PANEL
+// ════════════════════════════════════════════════════════════
+const overlay    = document.getElementById('settingsOverlay');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsClose = document.getElementById('settingsClose');
+const settingsSave  = document.getElementById('settingsSave');
+const settingsReset = document.getElementById('settingsReset');
+
+function openSettings() {
+  const urls = loadUrls();
+  document.querySelectorAll('.settings-input[data-url-key]').forEach(inp => {
+    inp.value = urls[inp.dataset.urlKey] || '';
+  });
+  updateFetchSummary();
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSettings() {
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+settingsBtn.addEventListener('click', openSettings);
+settingsClose.addEventListener('click', closeSettings);
+overlay.addEventListener('click', e => { if (e.target === overlay) closeSettings(); });
+
+settingsSave.addEventListener('click', () => {
+  const saved = {};
+  document.querySelectorAll('.settings-input[data-url-key]').forEach(inp => {
+    const key = inp.dataset.urlKey;
+    const val = inp.value.trim();
+    if (val && val !== DEFAULT_URLS[key]) saved[key] = val;
+    // Also update Buy links
+    const lnk = document.getElementById('lnk-' + key);
+    if (lnk && val) lnk.href = val;
+  });
+  saveUrls(saved);
+  showToast('✓ URLs saved');
+  closeSettings();
+});
+
+settingsReset.addEventListener('click', () => {
+  if (!confirm('Reset all URLs to defaults?')) return;
+  localStorage.removeItem(LS_URLS);
+  document.querySelectorAll('.settings-input[data-url-key]').forEach(inp => {
+    inp.value = DEFAULT_URLS[inp.dataset.urlKey] || '';
+  });
+  showToast('URLs reset to defaults');
+});
+
+function updateFetchSummary(ok, fail) {
+  const summary = document.getElementById('fetchSummary');
+  const prices = loadPrices();
+  const total = Object.keys(DEFAULT_URLS).length;
+  const fetched = Object.values(prices).filter(v => v.ts > 0).length;
+  if (fetched === 0 && ok === undefined) { summary.style.display = 'none'; return; }
+  summary.style.display = 'flex';
+  const lastTs = Math.max(...Object.values(prices).map(v => v.ts || 0));
+  summary.innerHTML =
+    `<span><span class="dot ok"></span> ${fetched}/${total} prices cached</span>` +
+    (lastTs > 0 ? `<span>Last refresh: ${timeAgo(lastTs)}</span>` : '') +
+    (fail !== undefined ? `<span><span class="dot err"></span> ${fail} failed</span>` : '');
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOAST NOTIFICATION
+// ════════════════════════════════════════════════════════════
+function showToast(msg) {
+  let t = document.getElementById('appToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'appToast';
+    t.style.cssText = `position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));left:50%;
+      transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);
+      border-radius:20px;padding:9px 18px;font-size:12px;color:var(--text);white-space:nowrap;
+      box-shadow:0 4px 24px rgba(0,0,0,.5);z-index:500;transition:opacity .3s;`;
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._hide);
+  t._hide = setTimeout(() => { t.style.opacity = '0'; }, 3200);
+}
+
+// ── Tab navigation ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.stack-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.panel).classList.add('active');
+  });
+});
+
+// ── Schedule builder ──
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function buildGrid(id, weeks, fn) {
+  const el = document.getElementById(id);
+  for (let w = 0; w < weeks; w++) {
+    const wr = document.createElement('div'); wr.className = 'week-row';
+    const wl = document.createElement('div'); wl.className = 'week-label';
+    wl.textContent = 'W' + (w + 1); wr.appendChild(wl);
+    const dg = document.createElement('div'); dg.className = 'days-grid';
+    for (let d = 0; d < 7; d++) {
+      const n = w * 7 + d + 1;
+      const col = document.createElement('div'); col.className = 'day-col';
+      const dn = document.createElement('div'); dn.className = 'day-name';
+      dn.textContent = DAY_NAMES[d]; col.appendChild(dn);
+      const pills = fn(n, d, w);
+      if (!pills.length) {
+        const e = document.createElement('div'); e.className = 'day-empty'; col.appendChild(e);
+      } else {
+        pills.forEach(p => {
+          const pill = document.createElement('div'); pill.className = 'day-pill';
+          pill.style.background = p.bg; pill.style.color = p.text; pill.textContent = p.label;
+          col.appendChild(pill);
+        });
+      }
+      dg.appendChild(col);
+    }
+    wr.appendChild(dg); el.appendChild(wr);
+  }
+}
+
+function isTB(d, w) { return w < 4 ? (d === 0 || d === 3) : d === 0; }
+
+buildGrid('grid-s1', 8, (n, d, w) => {
+  const p = [];
+  if (n <= 60) p.push({bg:'#5DCAA5', text:'#052e21', label:'BPC-157\n500mcg'});
+  if (isTB(d, w)) p.push({bg:'#7F77DD', text:'#19155a', label:'TB-500\n2mg'});
+  return p;
+});
+
+buildGrid('grid-s2', 15, (n, d, w) => {
+  const p = [];
+  if (n <= 60) p.push({bg:'#5DCAA5', text:'#052e21', label:'BPC-157\n500mcg'});
+  if (w < 8 && isTB(d, w)) p.push({bg:'#7F77DD', text:'#19155a', label:'TB-500\n2mg'});
+  if (n <= 100) p.push({bg:'#EF9F27', text:'#3d2400', label:'GHK-Cu\n1mg'});
+  return p;
+});
+
+buildGrid('grid-s3', 11, (n, d, w) => {
+  const p = [];
+  if (n <= 75) p.push({bg:'#378ADD', text:'#031d3a', label:'Ipam.\n100mcg×2'});
+  if (n <= 70 && (d === 0 || d === 3)) p.push({bg:'#D4537E', text:'#360d1c', label:'CJC\n100mcg'});
+  return p;
+});
+
+buildGrid('grid-s4', 8, (n, d, w) => {
+  const p = [];
+  if (n <= 50) p.push({bg:'#D85A30', text:'#350e03', label:'DSIP\n100mcg'});
+  if (n <= 20) p.push({bg:'#B4B2A9', text:'#1c1c1b', label:'Selank\n250mcg'});
+  return p;
+});
+
+// ── Copy shopping list ──
+document.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const ul = document.getElementById(btn.dataset.list);
+    const text = [...ul.querySelectorAll('li')].map(li => '• ' + li.textContent.trim()).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  });
+});
+
+// ── PWA: Install prompt ──
+let deferredPrompt;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e; installBtn.classList.add('visible');
+});
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') installBtn.classList.remove('visible');
+  deferredPrompt = null;
+});
+window.addEventListener('appinstalled', () => installBtn.classList.remove('visible'));
+
+// ── Offline detection ──
+const banner = document.getElementById('offlineBanner');
+function updateOnline() {
+  banner.classList.toggle('visible', !navigator.onLine);
+}
+window.addEventListener('online', updateOnline);
+window.addEventListener('offline', updateOnline);
+updateOnline();
+
+// ── Register service worker ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ── On load: render any cached prices ──
+renderCachedPrices();
+</script>
+</body>
+</html>
