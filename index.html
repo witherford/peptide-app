@@ -937,7 +937,7 @@ function scrapePrice(key, html) {
 // ════════════════════════════════════════════════════════════
 //  FETCH via ScraperAPI (HTML-only, no size limit)
 // ════════════════════════════════════════════════════════════
-const PROXY = "https://peptide-app-scraper.witherford-m.workers.dev/?url=;
+const PROXY = "https://peptide-app-scraper.witherford-m.workers.dev/?url=";
 
 async function fetchPrice(key, url) {
   const proxyUrl = PROXY + encodeURIComponent(url);
