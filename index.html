@@ -935,18 +935,27 @@ function scrapePrice(key, html) {
 }
 
 // ════════════════════════════════════════════════════════════
-//  FETCH via CORS proxy
+//  FETCH via CORS proxy (corsproxy.io)
 // ════════════════════════════════════════════════════════════
 const PROXY = 'https://corsproxy.io/?';
 
 async function fetchPrice(key, url) {
   const proxyUrl = PROXY + encodeURIComponent(url);
-  const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(18000) });
+
+  const res = await fetch(proxyUrl, {
+    signal: AbortSignal.timeout(18000),
+    headers: {
+      "User-Agent": "Mozilla/5.0" // improves success rate
+    }
+  });
+
   if (!res.ok) throw new Error('HTTP ' + res.status);
-  const data = await res.json();
-  const html = data.contents || '';
+
+  const html = await res.text();   // corsproxy.io returns raw HTML, not JSON
+
   const price = scrapePrice(key, html);
   if (!price) throw new Error('Price not found in page');
+
   return price;
 }
 
