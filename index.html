@@ -937,7 +937,7 @@ function scrapePrice(key, html) {
 // ════════════════════════════════════════════════════════════
 //  FETCH via CORS proxy (corsproxy.io)
 // ════════════════════════════════════════════════════════════
-const PROXY = 'https://corsproxy.io/?';
+const PROXY = "https://api.scraperapi.com?api_key=YOUR_KEY&url=";
 
 async function fetchPrice(key, url) {
   const proxyUrl = PROXY + encodeURIComponent(url);
