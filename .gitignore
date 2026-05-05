@@ -8,6 +8,9 @@ desktop.ini
 # Local dev helpers (not deployed)
 .local-serve.cjs
 .claude/
+.refs-input.json
+.refs-verified.json
+.refs-summary.md
 
 # Logs
 *.log
