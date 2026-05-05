@@ -1,0 +1,13 @@
+# OS / editor junk
+Thumbs.db
+.DS_Store
+desktop.ini
+*.swp
+*.swo
+
+# Local dev helpers (not deployed)
+.local-serve.cjs
+.claude/
+
+# Logs
+*.log
