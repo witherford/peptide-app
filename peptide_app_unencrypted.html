@@ -1872,6 +1872,8 @@
               <span id="sf-bac-price-display" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:var(--text3)">—</span>
             </div>
           </div>
+          <!-- Required vs available bac water status (always shown when peptides exist) -->
+          <div id="sf-water-required" style="display:none;margin-top:8px;font-size:11px;line-height:1.5;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px"></div>
           <div style="background:var(--blue-bg);border:1px solid rgba(55,138,221,0.2);border-radius:var(--radius-sm);padding:7px 10px;font-size:11px;color:var(--blue);line-height:1.5;margin-top:8px">
             💧 Use the <strong>Guides</strong> page → <em>"Peptide Reconstitution Calculator"</em> to calculate how much water to add.
           </div>
@@ -2555,15 +2557,96 @@ function buildStackCard(stack) {
       // Build schedule HTML fresh — use the combined view function
       const schedHtml = buildCombinedScheduleView(stack);
 
-      // Build legend lines
+      // Build legend lines — now also showing vial qty, total mg, and units to draw
+      // per dose for the bacteriostatic-water volume the user picked.
+      const exportWaterMl = parseFloat(stack.waterPerVial) || 2;
+      const exportProds = (typeof catAllProducts === 'function') ? catAllProducts() : [];
+      function _vialMgFor(p) {
+        if (typeof _pbBestPriceForRowName === 'function') {
+          const m = _pbBestPriceForRowName(exportProds, p.name || '');
+          if (m?.capacity_mg) return m.capacity_mg;
+        }
+        const fromName = (p.name || '').match(/(\d+(?:\.\d+)?)\s*mg\b/i);
+        return fromName ? parseFloat(fromName[1]) : null;
+      }
+      function _doseMcg(p) {
+        const n = parseFloat(p.doseAmount);
+        if (isNaN(n) || n <= 0) return null;
+        return p.doseUnit === 'mg' ? n * 1000 : n;
+      }
+
       const legendItems = stack.peptides.map(p => {
         const col = getColorById(p.color);
-        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <div style="width:10px;height:10px;border-radius:3px;background:${col.bg};flex-shrink:0"></div>
-          <span style="font-size:12px;color:${textMain};font-weight:600">${escHtml(p.name)}</span>
-          <span style="font-size:11px;color:${textMuted}">${escHtml(p.dose||'')}</span>
+        const vialMg = _vialMgFor(p);
+        const vialQty = p.vialQty || 1;
+        const totalMg = (vialMg != null) ? vialMg * vialQty : null;
+        const dMcg = _doseMcg(p);
+        const units = (dMcg != null && vialMg != null && exportWaterMl > 0)
+          ? (dMcg * exportWaterMl) / (vialMg * 10)
+          : null;
+        const unitsTxt = units != null ? `${(Math.round(units * 10) / 10).toString().replace(/\.0$/,'')} units / dose` : '';
+        const qtyTxt   = `${vialQty} vial${vialQty===1?'':'s'}` + (totalMg != null ? ` · ${totalMg}mg total` : '');
+        return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+          <div style="width:10px;height:10px;border-radius:3px;background:${col.bg};flex-shrink:0;margin-top:4px"></div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:6px">
+              <span style="font-size:12px;color:${textMain};font-weight:600">${escHtml(p.name)}</span>
+              <span style="font-size:11px;color:${textMuted}">${escHtml(p.dose||'')}</span>
+            </div>
+            <div style="font-size:10.5px;color:${textMuted};font-family:'JetBrains Mono',monospace;margin-top:2px">📦 ${escHtml(qtyTxt)}</div>
+            ${unitsTxt ? `<div style="font-size:10.5px;color:${accent};font-family:'JetBrains Mono',monospace;margin-top:1px">🔬 ${escHtml(unitsTxt)} <span style="color:${textMuted};font-weight:400">(${exportWaterMl}ml water per ${vialMg||'?'}mg vial)</span></div>` : ''}
+          </div>
         </div>`;
       }).join('');
+
+      // Total needles for the protocol (weeks × per-week, respecting per-week overrides + stacking)
+      let exportTotalNeedles = 0;
+      let exportWeeks = 8;
+      const _len = stack.length || '';
+      const _wm = _len.match(/(\d+(?:\.\d+)?)\s*week/i);
+      const _dm = _len.match(/(\d+(?:\.\d+)?)\s*day/i);
+      const _mm = _len.match(/(\d+(?:\.\d+)?)\s*month/i);
+      if (_wm)      exportWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(_wm[1])), 52));
+      else if (_dm) exportWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(_dm[1]) / 7), 52));
+      else if (_mm) exportWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(_mm[1]) * 4.33), 52));
+      for (let w = 0; w < exportWeeks; w++) {
+        for (let d = 0; d < 7; d++) {
+          const inj = stack.peptides.filter(p => {
+            const wd = stack.weekDays?.[p.id]?.[w];
+            const days = wd !== undefined ? wd : (p.days || []);
+            return days.includes(d);
+          });
+          if (!inj.length) continue;
+          const placed = new Set();
+          let groupCount = 0;
+          inj.forEach(p => {
+            if (placed.has(p.id)) return;
+            placed.add(p.id);
+            (p.stackWith || []).forEach(sid => {
+              const sp = inj.find(op => op.id === sid);
+              if (sp) placed.add(sp.id);
+            });
+            groupCount++;
+          });
+          exportTotalNeedles += groupCount;
+        }
+      }
+      const totalPeptideVials = stack.peptides.reduce((s, p) => s + (p.vialQty || 1), 0);
+      const exportNeededWaterMl = totalPeptideVials * exportWaterMl;
+      const needleBlock = `<div style="background:${bg2};border:1px solid ${border};border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:18px">
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:3px">Needles (total)</div>
+          <div style="font-size:18px;font-weight:700;color:${accent};font-family:'JetBrains Mono',monospace">${exportTotalNeedles}</div>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:3px">Bac. water needed</div>
+          <div style="font-size:14px;font-weight:600;color:${textMain};font-family:'JetBrains Mono',monospace">${exportNeededWaterMl.toFixed(1).replace(/\.0$/,'')}ml <span style="font-size:10px;color:${textMuted};font-weight:400">(${totalPeptideVials} vial${totalPeptideVials===1?'':'s'} × ${exportWaterMl}ml)</span></div>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:3px">Duration</div>
+          <div style="font-size:14px;font-weight:600;color:${textMain};font-family:'JetBrains Mono',monospace">${exportWeeks} week${exportWeeks===1?'':'s'}</div>
+        </div>
+      </div>`;
 
       // Build stacking info for export
       const stackedPairInfos = [];
@@ -2604,6 +2687,7 @@ function buildStackCard(stack) {
           ${legendItems}
         </div>
         ${stackingNote}
+        ${needleBlock}
         <!-- Schedule grid — inherit the existing rendered grid -->
         <div class="export-sched-container" style="background:${bg2};border:1px solid ${border};border-radius:10px;overflow:hidden">
           ${schedHtml}
@@ -4685,10 +4769,20 @@ function pbRenderStackDurationPanel() {
   const sym = currencySymbol(), rate = fxRate();
 
   // For each peptide, calculate how many days it will last
+  const _allProds = (typeof catAllProducts === 'function') ? catAllProducts() : [];
   const rows = currentPeptideRows.map(p => {
     const vialQty = p.vialQty || 1;
-    const catProd = p._catalogueProduct || (typeof catAllProducts==='function' ? catBestForPeptide(catAllProducts(), p.name) : null);
-    const vialMg = catProd?.capacity_mg || null;
+    let catProd = p._catalogueProduct || catBestForPeptide(_allProds, p.name);
+    // Fuzzy fallback for renamed catalogue products (matches by stem + mg).
+    if (!catProd && typeof _pbBestPriceForRowName === 'function') {
+      catProd = _pbBestPriceForRowName(_allProds, p.name);
+    }
+    let vialMg = catProd?.capacity_mg || null;
+    // Last resort: parse the mg out of the row's own name.
+    if (vialMg == null) {
+      const mFromName = (p.name || '').match(/(\d+(?:\.\d+)?)\s*mg\b/i);
+      if (mFromName) vialMg = parseFloat(mFromName[1]);
+    }
 
     // Total mg available across all vials
     const totalMg = vialMg != null ? vialMg * vialQty : null;
@@ -4803,9 +4897,14 @@ function pbRenderStackDurationPanel() {
     const concStr = r.concMcgPerMl != null ? r.concMcgPerMl.toFixed(0) + ' mcg/ml conc.' : '';
     const unitsStr = r.unitsToDraw != null ? r.unitsToDraw + ' units to draw' : '';
 
+    // Quantity / total-mg summary line shown directly under the peptide name,
+    // mirroring how the bacteriostatic-water row presents its vial summary.
+    const totalPeptideMg = (r.vialMg != null && r.vialQty != null) ? (r.vialMg * r.vialQty) : null;
+    const qtySummary = `${r.vialQty} vial${r.vialQty===1?'':'s'}` + (totalPeptideMg != null ? ` · ${totalPeptideMg}mg total` : '');
+
     html += `
       <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">
           <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col.bg};flex-shrink:0"></span>
           <span style="font-size:12px;font-weight:600;flex:1">${escHtml(r.p.name)}</span>
           ${isLimiting ? `<span style="font-size:9px;background:var(--amber-bg);color:var(--amber);border:1px solid rgba(239,159,39,0.3);border-radius:20px;padding:1px 7px">⚡ Limiting</span>` : ''}
@@ -4813,13 +4912,13 @@ function pbRenderStackDurationPanel() {
             ${escHtml(durDisp)}
           </span>
         </div>
+        <div style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;margin:0 0 6px 16px">📦 ${escHtml(qtySummary)}</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:4px">
-          <div style="font-size:10.5px;color:var(--text2)">📦 ${escHtml(r.vialQty + ' × ' + (r.vialMg != null ? r.vialMg+'mg' : '?'))}</div>
           <div style="font-size:10.5px;color:var(--text2)">💉 ${hasDose ? escHtml(doseDisp) : doseDisp}</div>
           <div style="font-size:10.5px;color:var(--text2)">📅 ${injStr}</div>
           ${concStr ? `<div style="font-size:10.5px;color:var(--text2)">🧪 ${escHtml(concStr)}</div>` : ''}
           ${unitsStr ? `<div style="font-size:10.5px;color:var(--blue);font-weight:600">🔬 ${escHtml(unitsStr)}</div>` : ''}
-          ${totalMgStr ? `<div style="font-size:10px;color:var(--text3)">${escHtml(totalMgStr)}${totalInjStr?' · '+totalInjStr:''}</div>` : ''}
+          ${totalInjStr ? `<div style="font-size:10px;color:var(--text3)">${escHtml(totalInjStr)}</div>` : ''}
         </div>
       </div>`;
   });
@@ -4874,7 +4973,8 @@ function pbRenderStackDurationPanel() {
 }
 
 function updateWaterWarning() {
-  const warn = document.getElementById('sf-water-warning');
+  const warn   = document.getElementById('sf-water-warning');
+  const reqPill = document.getElementById('sf-water-required');
   const mlPerVial = parseFloat(document.getElementById('sf-water-per-vial').value) || 2;
   const bacQtyStr = document.getElementById('sf-bac-qty').value || '';
 
@@ -4896,15 +4996,36 @@ function updateWaterWarning() {
   if (mBac) availableMl = parseInt(mBac[1]) * parseFloat(mBac[2]);
   else { const mSingle = bacQtyStr.match(/(\d+(?:\.\d+)?)\s*ml/i); if (mSingle) availableMl = parseFloat(mSingle[1]); }
 
-  if (availableMl === 0 || totalPeptideVials === 0) { warn.style.display = 'none'; return; }
+  // Always-visible required-ml pill (only hide when there are no peptides at all)
+  if (reqPill) {
+    if (totalPeptideVials === 0) {
+      reqPill.style.display = 'none';
+    } else {
+      reqPill.style.display = 'flex';
+      const remaining = availableMl - neededMl;
+      let statusHtml;
+      if (availableMl === 0) {
+        statusHtml = `<span style="color:var(--text3)">No bacteriostatic water added yet</span>`;
+      } else if (remaining < 0) {
+        statusHtml = `<span style="color:var(--red);font-weight:600">Short by ${(-remaining).toFixed(1).replace(/\.0$/,'')}ml</span>`;
+      } else {
+        statusHtml = `<span style="color:var(--green);font-weight:600">${remaining.toFixed(1).replace(/\.0$/,'')}ml spare</span>`;
+      }
+      reqPill.innerHTML = `
+        <span style="color:var(--text2)">Required for this stack: <strong style="color:var(--text);font-family:'JetBrains Mono',monospace">${neededMl.toFixed(1).replace(/\.0$/,'')}ml</strong>
+          <small style="color:var(--text3);font-weight:400">(${totalPeptideVials} vial${totalPeptideVials===1?'':'s'} × ${mlPerVial}ml)</small></span>
+        <span>${statusHtml}</span>`;
+    }
+  }
 
-  if (neededMl > availableMl) {
+  // Red banner ONLY when bac water is purchased and short.
+  if (availableMl === 0 || totalPeptideVials === 0 || neededMl <= availableMl) {
+    warn.style.display = 'none';
+  } else {
     warn.style.display = 'block';
     warn.innerHTML = `⚠️ <strong>Not enough bacteriostatic water!</strong><br>
-      You need <strong>${neededMl}ml</strong> but only have <strong>${availableMl}ml</strong>.
-      Consider adding more water to your stack. (You can ignore this if you have extra water elsewhere.)`;
-  } else {
-    warn.style.display = 'none';
+      You need <strong>${neededMl.toFixed(1).replace(/\.0$/,'')}ml</strong> but only have <strong>${availableMl.toFixed(1).replace(/\.0$/,'')}ml</strong>.
+      Add more vials of bacteriostatic water (or reduce <em>ml per peptide vial</em>) before starting the protocol.`;
   }
 }
 
@@ -9107,7 +9228,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.8.0';
+  const APP_VERSION = '1.9.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
