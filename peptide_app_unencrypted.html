@@ -3015,38 +3015,38 @@ function buildStackSummaryPanel(stack) {
         ${peptideLines}
         ${bacLine}
       </div>
-      <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--bg4);border-top:1px solid var(--border2)">
-        <!-- Left side: protocol stats (needles + water requirement) -->
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <!-- Footer: protocol stats grid + total price banner.
+           Stats are arranged on a single CSS grid that wraps cleanly on mobile.
+           Subtext under each stat was removed (was misleading). -->
+      <div style="background:var(--bg4);border-top:1px solid var(--border2)">
+        <div style="padding:12px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px 18px">
           ${totalNeedles ? `
-            <div style="text-align:left">
-              <div style="font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px">Total needles</div>
-              <div style="font-size:14px;font-weight:700;color:var(--amber);font-family:'JetBrains Mono',monospace">💉 ${totalNeedles}</div>
+            <div>
+              <div style="font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Total needles</div>
+              <div style="font-size:15px;font-weight:700;color:var(--amber);font-family:'JetBrains Mono',monospace">💉 ${totalNeedles}</div>
             </div>` : ''}
           ${totalPeptideVials > 0 ? `
-            <div style="text-align:left">
-              <div style="font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px">Bac. water needed</div>
-              <div style="font-size:14px;font-weight:700;color:${waterShort?'var(--red)':'var(--blue)'};font-family:'JetBrains Mono',monospace">💧 ${neededMl.toFixed(1).replace(/\.0$/,'')}ml</div>
-              <div style="font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace">${totalPeptideVials} vial${totalPeptideVials===1?'':'s'} × ${mlPV}ml${availableMl>0 ? (waterShort ? ` · short by ${(neededMl-availableMl).toFixed(1).replace(/\.0$/,'')}ml` : ` · ${availableMl.toFixed(1).replace(/\.0$/,'')}ml available`) : ''}</div>
+            <div>
+              <div style="font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Bac. water needed</div>
+              <div style="font-size:15px;font-weight:700;color:${waterShort?'var(--red)':'var(--blue)'};font-family:'JetBrains Mono',monospace">💧 ${neededMl.toFixed(1).replace(/\.0$/,'')}ml</div>
             </div>` : ''}
           ${stack.length ? `
-            <div style="text-align:left">
-              <div style="font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px">Duration</div>
-              <div style="font-size:14px;font-weight:700;color:var(--text);font-family:'JetBrains Mono',monospace">${escHtml(stack.length)}</div>
+            <div>
+              <div style="font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:3px">Duration</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text);font-family:'JetBrains Mono',monospace">${escHtml(stack.length)}</div>
             </div>` : ''}
         </div>
-        <!-- Right side: total cost -->
         ${hasAnyPrice
-          ? `<div style="text-align:right">
-               <div style="font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px">Best price est. <span style="color:var(--text3);font-weight:400;letter-spacing:0;text-transform:none">(Postage not inc)</span></div>
+          ? `<div style="padding:10px 14px;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+               <div style="font-size:9.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)">Best price est.<span style="color:var(--text3);font-weight:400;letter-spacing:0;text-transform:none;margin-left:6px">(Postage not inc)</span></div>
                <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px;color:var(--green)">${sym}${grandTotal.toFixed(rate>=100?0:2)}</div>
              </div>`
-          : `<div style="font-size:11px;color:var(--text3);font-style:italic">Add products to Catalogue to see prices</div>`
+          : `<div style="padding:10px 14px;border-top:1px solid var(--border2);font-size:11px;color:var(--text3);font-style:italic">Add products to Catalogue to see prices</div>`
         }
       </div>
       ${waterShort ? `
         <div style="padding:8px 14px;background:rgba(216,90,48,0.08);border-top:1px solid rgba(216,90,48,0.3);font-size:11px;color:var(--red)">
-          ⚠️ <strong>Not enough bacteriostatic water</strong> — protocol needs ${neededMl.toFixed(1).replace(/\.0$/,'')}ml but only ${availableMl.toFixed(1).replace(/\.0$/,'')}ml is currently in the stack.
+          ⚠️ <strong>Not enough bacteriostatic water</strong> — needs ${neededMl.toFixed(1).replace(/\.0$/,'')}ml, only ${availableMl.toFixed(1).replace(/\.0$/,'')}ml in stack.
         </div>` : ''}
       <!-- Combined Protocol Schedule View -->
       <div style="border-top:2px solid var(--border2);padding:12px 14px 14px">
@@ -9083,19 +9083,39 @@ function autoPopulateDefaultStacksFromCatalogue() {
       }
     });
 
-    // Also auto-pick bac water from catalogue
+    // Also auto-pick bac water from catalogue.
+    // Strategy: parse the actual ml-per-vial from each bac product's name and
+    // pick the option with the LOWEST total cost to cover the protocol's need.
+    // (Previously we just picked the cheapest unit-priced product, which often
+    // resulted in the qty label saying "1 × 10ml" while the picked product was
+    // actually a 3ml vial — a confusing mismatch.)
     if (stack.bacWater !== undefined) {
       const bacProds = allProds.filter(cp => /bac|bacterio|water/i.test(cp.name));
-      if (bacProds.length) {
-        const bestBac = bacProds.sort((a, b) => {
-          if (a.price == null) return 1; if (b.price == null) return -1;
-          return a.price - b.price;
-        })[0];
-        const totalPeptideVials = stack.peptides.reduce((s, p) => s + (p.vialQty || 1), 0);
-        const mlPerPeptideVial = stack.waterPerVial || 2;
-        const bacMlNeeded = totalPeptideVials * mlPerPeptideVial;
-        const bacVialMl = bestBac.capacity_mg || 10; // capacity_mg used for ml on bac water
-        const bacVialsNeeded = Math.max(1, Math.ceil(bacMlNeeded / bacVialMl));
+      const totalPeptideVials = stack.peptides.reduce((s, p) => s + (p.vialQty || 1), 0);
+      const mlPerPeptideVial = stack.waterPerVial || 2;
+      const bacMlNeeded = Math.max(totalPeptideVials * mlPerPeptideVial, 1);
+
+      function _bacMlFromName(name) {
+        const m = (name || '').match(/(\d+(?:\.\d+)?)\s*ml\b/i);
+        return m ? parseFloat(m[1]) : null;
+      }
+
+      let bestOpt = null;
+      bacProds.forEach(cp => {
+        if (cp.price == null) return;
+        const ml = _bacMlFromName(cp.name) || cp.capacity_mg || null;
+        if (!ml || ml <= 0) return;
+        const vialsNeeded = Math.max(1, Math.ceil(bacMlNeeded / ml));
+        const totalCost = cp.price * vialsNeeded;
+        if (!bestOpt || totalCost < bestOpt.totalCost) {
+          bestOpt = { cp, ml, vialsNeeded, totalCost };
+        }
+      });
+
+      if (bestOpt) {
+        const bestBac = bestOpt.cp;
+        const bacVialMl = bestOpt.ml;
+        const bacVialsNeeded = bestOpt.vialsNeeded;
         const bacQty = bacVialsNeeded + ' × ' + bacVialMl + 'ml';
         const bacRetailerName = bestBac.source === 'uk-peptides' ? 'UK Peptides'
           : bestBac.source === 'anglo-peptides' ? 'Anglo Peptides'
@@ -9104,6 +9124,16 @@ function autoPopulateDefaultStacksFromCatalogue() {
           qty: bacQty,
           retailerA: { name: bacRetailerName, url: bestBac.url || '' },
           retailerB: stack.bacWater?.retailerB || { name: '', url: '' },
+          // Persist the picked product so the modal's bac-water picker UI
+          // restores the same selection on edit (including its name + ml).
+          product: {
+            name: bestBac.name,
+            price: bestBac.price,
+            source: bestBac.source,
+            url: bestBac.url,
+            stock: bestBac.stock,
+            capacity_mg: bestBac.capacity_mg,
+          },
         };
         changed = true;
       }
@@ -9288,7 +9318,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.10.0';
+  const APP_VERSION = '1.11.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
