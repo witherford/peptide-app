@@ -6,7 +6,8 @@
 //   - Google Fonts + cdnjs html2canvas: stale-while-revalidate.
 //   - Scraper API (peptide-app-scraper.workers.dev): always pass through, never cached.
 
-const CACHE_NAME = 'peptide-app-v1';
+// Bump on every release so the old cache is evicted on activate.
+const CACHE_NAME = 'peptide-app-v1.6.0';
 const SCRAPER_HOST = 'peptide-app-scraper.witherford-m.workers.dev';
 
 const PRECACHE_URLS = [

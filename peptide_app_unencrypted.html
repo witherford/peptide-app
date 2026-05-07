@@ -994,6 +994,7 @@
     <div class="header-title">
       <span class="logo-dot"></span>
       Witherrs <span>Peptide App</span>
+      <span id="appVersionBadge" style="font-size:10px;font-weight:500;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-left:6px;letter-spacing:0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1px 7px"></span>
     </div>
     <div class="header-actions">
       <span id="autosaveIndicator" style="font-size:10px;color:var(--green);opacity:0;transition:opacity 1.5s;display:flex;align-items:center;gap:4px;margin-right:2px;">
@@ -1004,6 +1005,10 @@
         <svg id="themeIconDark" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         <svg id="themeIconLight" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       </button>
+      <button class="hdr-btn" id="updateCheckBtn" title="Check for updates">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+      </button>
+      <span id="updateStatus" style="font-size:10px;color:var(--text3);display:none;margin-right:4px;white-space:nowrap"></span>
       <button class="hdr-btn" id="backupBtn" title="Backup &amp; Restore data">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       </button>
@@ -1147,207 +1152,7 @@
       <p class="guides-page-sub">Practical reference material for research peptide protocols.</p>
     </div>
 
-    <!-- ── Guide 1: Peptide Reconstitution Calculator ── -->
-    <div class="guide-card" id="guide-reconstitution">
-      <button class="guide-card-header" data-guide="reconstitution">
-        <div class="guide-card-icon" style="background:rgba(93,202,165,0.15);color:#5DCAA5">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
-        </div>
-        <div class="guide-card-info">
-          <div class="guide-card-title">Calculating Peptide Reconstitution</div>
-          <div class="guide-card-desc">How many units to draw for any vial size, water volume, and dose</div>
-        </div>
-        <svg class="guide-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="guide-card-body" id="guide-body-reconstitution">
-
-        <div class="guide-explainer">
-          <p>When you add bacteriostatic water to a peptide vial you create a solution with a known concentration. You then draw the volume that gives you your target dose using a U-100 insulin syringe — where <strong>1 ml = 100 units</strong>.</p>
-          <div class="guide-formula-box">
-            <div class="guide-formula-label">Formula</div>
-            <div class="guide-formula">Units to draw = (Dose mcg ÷ Vial mg × Water ml) ÷ 10</div>
-          </div>
-          <p>Example: 5mg vial + 2ml water → 250mcg dose = <strong>5 units</strong>. See the table below, or use the interactive calculator.</p>
-        </div>
-
-        <!-- ── Interactive Calculator ── -->
-        <div class="guide-section-title">Interactive Calculator</div>
-        <div class="calc-card">
-          <div class="calc-row">
-            <div class="calc-field">
-              <label class="calc-label">Vial Size</label>
-              <select class="form-select" id="calc-vial">
-                <option value="2">2 mg</option>
-                <option value="5" selected>5 mg</option>
-                <option value="10">10 mg</option>
-                <option value="custom">Custom…</option>
-              </select>
-            </div>
-            <div class="calc-field" id="calc-vial-custom-wrap" style="display:none">
-              <label class="calc-label">Custom mg</label>
-              <input class="form-input" id="calc-vial-custom" type="number" min="0.1" step="0.1" placeholder="mg">
-            </div>
-            <div class="calc-field">
-              <label class="calc-label">Water Added</label>
-              <select class="form-select" id="calc-water">
-                <option value="1">1 ml</option>
-                <option value="2" selected>2 ml</option>
-                <option value="3">3 ml</option>
-                <option value="4">4 ml</option>
-                <option value="custom">Custom…</option>
-              </select>
-            </div>
-            <div class="calc-field" id="calc-water-custom-wrap" style="display:none">
-              <label class="calc-label">Custom ml</label>
-              <input class="form-input" id="calc-water-custom" type="number" min="0.1" step="0.1" placeholder="ml">
-            </div>
-            <div class="calc-field">
-              <label class="calc-label">Dose</label>
-              <select class="form-select" id="calc-dose">
-                <option value="100">100 mcg</option>
-                <option value="250" selected>250 mcg</option>
-                <option value="500">500 mcg</option>
-                <option value="1000">1000 mcg (1mg)</option>
-                <option value="2000">2000 mcg (2mg)</option>
-                <option value="custom">Custom…</option>
-              </select>
-            </div>
-            <div class="calc-field" id="calc-dose-custom-wrap" style="display:none">
-              <label class="calc-label">Custom mcg</label>
-              <input class="form-input" id="calc-dose-custom" type="number" min="1" step="1" placeholder="mcg">
-            </div>
-          </div>
-          <div class="calc-result" id="calc-result">
-            <div class="calc-result-main" id="calc-result-main">— units</div>
-            <div class="calc-result-detail" id="calc-result-detail"></div>
-          </div>
-        </div>
-
-        <!-- ── Reference Tables ── -->
-        <div class="guide-section-title" style="margin-top:20px">Reference Tables</div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">All values in <strong>insulin syringe units</strong> (U-100 scale). Highlighted rows show the recommended <strong>2ml</strong> water volume.</p>
-
-        <div id="recon-tables"></div>
-
-      </div>
-    </div>
-
-    <!-- ── Guide 2: Simple Maths ── -->
-    <div class="guide-card" id="guide-simplemaths">
-      <button class="guide-card-header" data-guide="simplemaths">
-        <div class="guide-card-icon" style="background:rgba(55,138,221,0.15);color:#378ADD">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-        </div>
-        <div class="guide-card-info">
-          <div class="guide-card-title">Simple Maths</div>
-          <div class="guide-card-desc">Quick-reference rules and shortcuts for common peptide doses</div>
-        </div>
-        <svg class="guide-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="guide-card-body" id="guide-body-simplemaths">
-        <div class="guide-explainer">
-          <p>Using <strong>2ml of water per vial</strong> is the simplest baseline — it gives you clean, easy-to-remember numbers on a U-100 syringe. Here are the key rules.</p>
-        </div>
-
-        <div class="guide-rule-grid">
-          <div class="guide-rule-card" style="border-color:rgba(93,202,165,0.3)">
-            <div class="guide-rule-title" style="color:var(--green)">5mg vial + 2ml water</div>
-            <div class="guide-rule-list">
-              <div class="guide-rule-row"><span>250 mcg dose</span><strong>5 units</strong></div>
-              <div class="guide-rule-row"><span>500 mcg dose</span><strong>10 units</strong></div>
-              <div class="guide-rule-row"><span>1mg (1000 mcg) dose</span><strong>20 units</strong></div>
-            </div>
-          </div>
-          <div class="guide-rule-card" style="border-color:rgba(55,138,221,0.3)">
-            <div class="guide-rule-title" style="color:var(--blue)">10mg vial + 2ml water</div>
-            <div class="guide-rule-list">
-              <div class="guide-rule-row"><span>250 mcg dose</span><strong>2.5 units</strong></div>
-              <div class="guide-rule-row"><span>500 mcg dose</span><strong>5 units</strong></div>
-              <div class="guide-rule-row"><span>1mg (1000 mcg) dose</span><strong>10 units</strong></div>
-              <div class="guide-rule-row"><span>2mg (2000 mcg) dose</span><strong>20 units</strong></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="guide-tip-box">
-          <strong>💡 The golden rule:</strong> With 2ml water, a 5mg vial = <em>500mcg per 10 units</em>. If you remember nothing else, remember that.
-        </div>
-        <div class="guide-tip-box" style="background:var(--blue-bg);border-color:rgba(55,138,221,0.25);color:var(--blue)">
-          <strong>📏 How to read the syringe:</strong> A U-100 insulin syringe has 100 small lines per ml. Each line = 1 unit = 0.01ml. Most peptide doses fall between 2 and 20 units.
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Guide 3: Injection Technique ── -->
-    <div class="guide-card" id="guide-injection">
-      <button class="guide-card-header" data-guide="injection">
-        <div class="guide-card-icon" style="background:rgba(127,119,221,0.15);color:#7F77DD">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-        </div>
-        <div class="guide-card-info">
-          <div class="guide-card-title">Subcutaneous Injection Technique</div>
-          <div class="guide-card-desc">Step-by-step guide to safe, low-irritation subcutaneous injections</div>
-        </div>
-        <svg class="guide-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="guide-card-body" id="guide-body-injection">
-        <div class="guide-explainer">
-          <p>Subcutaneous (SC) injection places the peptide in the fatty tissue just below the skin — this gives predictable absorption and is easy to self-administer.</p>
-        </div>
-        <div class="guide-steps">
-          <div class="guide-step"><div class="guide-step-num">1</div><div><strong>Wash hands</strong> thoroughly with soap and water. Dry completely.</div></div>
-          <div class="guide-step"><div class="guide-step-num">2</div><div><strong>Swab the vial</strong> septum with an alcohol wipe. Let it air-dry for 10 seconds.</div></div>
-          <div class="guide-step"><div class="guide-step-num">3</div><div><strong>Draw air</strong> equal to your dose into the syringe, inject air into the vial (prevents vacuum), then invert and draw your dose.</div></div>
-          <div class="guide-step"><div class="guide-step-num">4</div><div><strong>Choose a site</strong> — lower abdomen (2–3 inches from navel), outer thigh, or flank. Rotate sites each injection.</div></div>
-          <div class="guide-step"><div class="guide-step-num">5</div><div><strong>Pinch the skin</strong> lightly. Insert at 45–90° depending on tissue depth. For lean individuals, 45° is safer.</div></div>
-          <div class="guide-step"><div class="guide-step-num">6</div><div><strong>Inject slowly</strong> — push the plunger steadily over 5–10 seconds. Fast injection increases local irritation.</div></div>
-          <div class="guide-step"><div class="guide-step-num">7</div><div><strong>Withdraw</strong> at the same angle. Apply gentle pressure with a swab — do not rub.</div></div>
-          <div class="guide-step"><div class="guide-step-num">8</div><div><strong>Dispose</strong> of the needle safely in a sharps container. Never re-use needles.</div></div>
-        </div>
-        <div class="guide-tip-box" style="background:var(--red-bg);border-color:rgba(216,90,48,0.25);color:var(--red)">
-          <strong>⚠️ Never inject into a vein, muscle, or into skin that is red, swollen, or infected.</strong> If you experience persistent pain, swelling, or feel unwell after injection, seek medical advice.
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Guide 4: Storage & Handling ── -->
-    <div class="guide-card" id="guide-storage">
-      <button class="guide-card-header" data-guide="storage">
-        <div class="guide-card-icon" style="background:rgba(239,159,39,0.15);color:#EF9F27">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-        </div>
-        <div class="guide-card-info">
-          <div class="guide-card-title">Storage &amp; Handling</div>
-          <div class="guide-card-desc">How to keep your peptides stable and potent</div>
-        </div>
-        <svg class="guide-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="guide-card-body" id="guide-body-storage">
-        <div class="guide-rule-grid">
-          <div class="guide-rule-card" style="border-color:rgba(239,159,39,0.3)">
-            <div class="guide-rule-title" style="color:var(--amber)">Lyophilised (dry) peptide</div>
-            <div class="guide-rule-list">
-              <div class="guide-rule-row"><span>Room temp (sealed)</span><strong>Up to 3 months</strong></div>
-              <div class="guide-rule-row"><span>Refrigerated (2–8°C)</span><strong>12–24 months</strong></div>
-              <div class="guide-rule-row"><span>Frozen (−20°C)</span><strong>2–5 years</strong></div>
-            </div>
-          </div>
-          <div class="guide-rule-card" style="border-color:rgba(93,202,165,0.3)">
-            <div class="guide-rule-title" style="color:var(--green)">Reconstituted (in solution)</div>
-            <div class="guide-rule-list">
-              <div class="guide-rule-row"><span>Refrigerated (2–8°C)</span><strong>4–6 weeks</strong></div>
-              <div class="guide-rule-row"><span>Room temp</span><strong>Avoid — degrades fast</strong></div>
-              <div class="guide-rule-row"><span>Freeze after reconstitution?</span><strong>Not recommended</strong></div>
-            </div>
-          </div>
-        </div>
-        <div class="guide-tip-box">
-          <strong>🌡️ Key rules:</strong> Keep unreconstituted vials away from light and heat. Once you add bac water, keep refrigerated and use within 4–6 weeks. Always let cold peptide warm to room temp before injecting to reduce discomfort.
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Guide 5: Beginner's Guide to Peptides ── -->
+    <!-- ── Guide 1: Beginner's Guide to Peptides ── -->
     <div class="guide-card" id="guide-beginners">
       <button class="guide-card-header" data-guide="beginners">
         <div class="guide-card-icon" style="background:rgba(93,202,165,0.15);color:#5DCAA5">
@@ -1574,6 +1379,194 @@
           <strong>⚠️ Always remember:</strong> These are research compounds, not medications. Always consult a qualified medical professional before starting any protocol, especially if you have pre-existing conditions or take prescription medications.
         </div>
 
+      </div>
+    </div>
+
+    <!-- ── Guide 2: Calculating Peptide Reconstitution (incl. Quick-Reference Rules) ── -->
+    <div class="guide-card" id="guide-reconstitution">
+      <button class="guide-card-header" data-guide="reconstitution">
+        <div class="guide-card-icon" style="background:rgba(93,202,165,0.15);color:#5DCAA5">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
+        </div>
+        <div class="guide-card-info">
+          <div class="guide-card-title">Calculating Peptide Reconstitution</div>
+          <div class="guide-card-desc">How many units to draw for any vial size, water volume, and dose</div>
+        </div>
+        <svg class="guide-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="guide-card-body" id="guide-body-reconstitution">
+
+        <div class="guide-explainer">
+          <p>When you add bacteriostatic water to a peptide vial you create a solution with a known concentration. You then draw the volume that gives you your target dose using a U-100 insulin syringe — where <strong>1 ml = 100 units</strong>.</p>
+          <div class="guide-formula-box">
+            <div class="guide-formula-label">Formula</div>
+            <div class="guide-formula">Units to draw = (Dose mcg ÷ Vial mg × Water ml) ÷ 10</div>
+          </div>
+          <p>Example: 5mg vial + 2ml water → 250mcg dose = <strong>5 units</strong>. See the table below, or use the interactive calculator.</p>
+        </div>
+
+        <!-- ── Interactive Calculator ── -->
+        <div class="guide-section-title">Interactive Calculator</div>
+        <div class="calc-card">
+          <div class="calc-row">
+            <div class="calc-field">
+              <label class="calc-label">Vial Size</label>
+              <select class="form-select" id="calc-vial">
+                <option value="2">2 mg</option>
+                <option value="5" selected>5 mg</option>
+                <option value="10">10 mg</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div class="calc-field" id="calc-vial-custom-wrap" style="display:none">
+              <label class="calc-label">Custom mg</label>
+              <input class="form-input" id="calc-vial-custom" type="number" min="0.1" step="0.1" placeholder="mg">
+            </div>
+            <div class="calc-field">
+              <label class="calc-label">Water Added</label>
+              <select class="form-select" id="calc-water">
+                <option value="1">1 ml</option>
+                <option value="2" selected>2 ml</option>
+                <option value="3">3 ml</option>
+                <option value="4">4 ml</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div class="calc-field" id="calc-water-custom-wrap" style="display:none">
+              <label class="calc-label">Custom ml</label>
+              <input class="form-input" id="calc-water-custom" type="number" min="0.1" step="0.1" placeholder="ml">
+            </div>
+            <div class="calc-field">
+              <label class="calc-label">Dose</label>
+              <select class="form-select" id="calc-dose">
+                <option value="100">100 mcg</option>
+                <option value="250" selected>250 mcg</option>
+                <option value="500">500 mcg</option>
+                <option value="1000">1000 mcg (1mg)</option>
+                <option value="2000">2000 mcg (2mg)</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div class="calc-field" id="calc-dose-custom-wrap" style="display:none">
+              <label class="calc-label">Custom mcg</label>
+              <input class="form-input" id="calc-dose-custom" type="number" min="1" step="1" placeholder="mcg">
+            </div>
+          </div>
+          <div class="calc-result" id="calc-result">
+            <div class="calc-result-main" id="calc-result-main">— units</div>
+            <div class="calc-result-detail" id="calc-result-detail"></div>
+          </div>
+        </div>
+
+        <!-- ── Reference Tables ── -->
+        <div class="guide-section-title" style="margin-top:20px">Reference Tables</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">All values in <strong>insulin syringe units</strong> (U-100 scale). Highlighted rows show the recommended <strong>2ml</strong> water volume.</p>
+
+        <div id="recon-tables"></div>
+
+        <!-- ── Quick-Reference Rules (formerly the Simple Maths guide) ── -->
+        <div class="guide-section-title" style="margin-top:20px">Quick-Reference Rules</div>
+        <div class="guide-explainer">
+          <p>Using <strong>2ml of water per vial</strong> is the simplest baseline — it gives you clean, easy-to-remember numbers on a U-100 syringe. Here are the key rules.</p>
+        </div>
+
+        <div class="guide-rule-grid">
+          <div class="guide-rule-card" style="border-color:rgba(93,202,165,0.3)">
+            <div class="guide-rule-title" style="color:var(--green)">5mg vial + 2ml water</div>
+            <div class="guide-rule-list">
+              <div class="guide-rule-row"><span>250 mcg dose</span><strong>5 units</strong></div>
+              <div class="guide-rule-row"><span>500 mcg dose</span><strong>10 units</strong></div>
+              <div class="guide-rule-row"><span>1mg (1000 mcg) dose</span><strong>20 units</strong></div>
+            </div>
+          </div>
+          <div class="guide-rule-card" style="border-color:rgba(55,138,221,0.3)">
+            <div class="guide-rule-title" style="color:var(--blue)">10mg vial + 2ml water</div>
+            <div class="guide-rule-list">
+              <div class="guide-rule-row"><span>250 mcg dose</span><strong>2.5 units</strong></div>
+              <div class="guide-rule-row"><span>500 mcg dose</span><strong>5 units</strong></div>
+              <div class="guide-rule-row"><span>1mg (1000 mcg) dose</span><strong>10 units</strong></div>
+              <div class="guide-rule-row"><span>2mg (2000 mcg) dose</span><strong>20 units</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-tip-box">
+          <strong>💡 The golden rule:</strong> With 2ml water, a 5mg vial = <em>500mcg per 10 units</em>. If you remember nothing else, remember that.
+        </div>
+        <div class="guide-tip-box" style="background:var(--blue-bg);border-color:rgba(55,138,221,0.25);color:var(--blue)">
+          <strong>📏 How to read the syringe:</strong> A U-100 insulin syringe has 100 small lines per ml. Each line = 1 unit = 0.01ml. Most peptide doses fall between 2 and 20 units.
+        </div>
+
+
+      </div>
+    </div>
+
+    <!-- ── Guide 3: Subcutaneous Injection Technique ── -->
+    <div class="guide-card" id="guide-injection">
+      <button class="guide-card-header" data-guide="injection">
+        <div class="guide-card-icon" style="background:rgba(127,119,221,0.15);color:#7F77DD">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+        </div>
+        <div class="guide-card-info">
+          <div class="guide-card-title">Subcutaneous Injection Technique</div>
+          <div class="guide-card-desc">Step-by-step guide to safe, low-irritation subcutaneous injections</div>
+        </div>
+        <svg class="guide-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="guide-card-body" id="guide-body-injection">
+        <div class="guide-explainer">
+          <p>Subcutaneous (SC) injection places the peptide in the fatty tissue just below the skin — this gives predictable absorption and is easy to self-administer.</p>
+        </div>
+        <div class="guide-steps">
+          <div class="guide-step"><div class="guide-step-num">1</div><div><strong>Wash hands</strong> thoroughly with soap and water. Dry completely.</div></div>
+          <div class="guide-step"><div class="guide-step-num">2</div><div><strong>Swab the vial</strong> septum with an alcohol wipe. Let it air-dry for 10 seconds.</div></div>
+          <div class="guide-step"><div class="guide-step-num">3</div><div><strong>Draw air</strong> equal to your dose into the syringe, inject air into the vial (prevents vacuum), then invert and draw your dose.</div></div>
+          <div class="guide-step"><div class="guide-step-num">4</div><div><strong>Choose a site</strong> — lower abdomen (2–3 inches from navel), outer thigh, or flank. Rotate sites each injection.</div></div>
+          <div class="guide-step"><div class="guide-step-num">5</div><div><strong>Pinch the skin</strong> lightly. Insert at 45–90° depending on tissue depth. For lean individuals, 45° is safer.</div></div>
+          <div class="guide-step"><div class="guide-step-num">6</div><div><strong>Inject slowly</strong> — push the plunger steadily over 5–10 seconds. Fast injection increases local irritation.</div></div>
+          <div class="guide-step"><div class="guide-step-num">7</div><div><strong>Withdraw</strong> at the same angle. Apply gentle pressure with a swab — do not rub.</div></div>
+          <div class="guide-step"><div class="guide-step-num">8</div><div><strong>Dispose</strong> of the needle safely in a sharps container. Never re-use needles.</div></div>
+        </div>
+        <div class="guide-tip-box" style="background:var(--red-bg);border-color:rgba(216,90,48,0.25);color:var(--red)">
+          <strong>⚠️ Never inject into a vein, muscle, or into skin that is red, swollen, or infected.</strong> If you experience persistent pain, swelling, or feel unwell after injection, seek medical advice.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Guide 4: Storage & Handling ── -->
+    <div class="guide-card" id="guide-storage">
+      <button class="guide-card-header" data-guide="storage">
+        <div class="guide-card-icon" style="background:rgba(239,159,39,0.15);color:#EF9F27">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        </div>
+        <div class="guide-card-info">
+          <div class="guide-card-title">Storage &amp; Handling</div>
+          <div class="guide-card-desc">How to keep your peptides stable and potent</div>
+        </div>
+        <svg class="guide-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="guide-card-body" id="guide-body-storage">
+        <div class="guide-rule-grid">
+          <div class="guide-rule-card" style="border-color:rgba(239,159,39,0.3)">
+            <div class="guide-rule-title" style="color:var(--amber)">Lyophilised (dry) peptide</div>
+            <div class="guide-rule-list">
+              <div class="guide-rule-row"><span>Room temp (sealed)</span><strong>Up to 3 months</strong></div>
+              <div class="guide-rule-row"><span>Refrigerated (2–8°C)</span><strong>12–24 months</strong></div>
+              <div class="guide-rule-row"><span>Frozen (−20°C)</span><strong>2–5 years</strong></div>
+            </div>
+          </div>
+          <div class="guide-rule-card" style="border-color:rgba(93,202,165,0.3)">
+            <div class="guide-rule-title" style="color:var(--green)">Reconstituted (in solution)</div>
+            <div class="guide-rule-list">
+              <div class="guide-rule-row"><span>Refrigerated (2–8°C)</span><strong>4–6 weeks</strong></div>
+              <div class="guide-rule-row"><span>Room temp</span><strong>Avoid — degrades fast</strong></div>
+              <div class="guide-rule-row"><span>Freeze after reconstitution?</span><strong>Not recommended</strong></div>
+            </div>
+          </div>
+        </div>
+        <div class="guide-tip-box">
+          <strong>🌡️ Key rules:</strong> Keep unreconstituted vials away from light and heat. Once you add bac water, keep refrigerated and use within 4–6 weeks. Always let cold peptide warm to room temp before injecting to reduce discomfort.
+        </div>
       </div>
     </div>
 
@@ -6050,6 +6043,126 @@ const PEPTIDE_LIBRARY = [
       { label: 'Jayaraman et al. (2014) — RAD-140 neuroprotection in animal models (Endocrinology)', url: 'https://pubmed.ncbi.nlm.nih.gov/24428527/' },
     ],
   },
+
+  // ── Skin & Hair (new category, v1.6.0) ──
+  {
+    name: 'Argireline', aka: 'Acetyl Hexapeptide-3 · Acetyl Hexapeptide-8 · SNAP-25 fragment',
+    type: 'Skin & Hair', typeColor: '#C7A1D8',
+    tags: [
+      {label:'Topical', bg:'rgba(199,161,216,0.15)', color:'#C7A1D8'},
+      {label:'Anti-wrinkle', bg:'rgba(199,161,216,0.1)', color:'#C7A1D8'},
+      {label:'SNARE inhibitor', bg:'rgba(199,161,216,0.08)', color:'#C7A1D8'},
+    ],
+    description: 'Argireline is a synthetic hexapeptide patterned after the N-terminal end of SNAP-25, a SNARE-complex protein involved in neurotransmitter release. By competitively inhibiting SNARE assembly at the neuromuscular junction, it modestly reduces facial muscle contraction in expression-line areas, attenuating the formation of dynamic wrinkles. Marketed as a "topical Botox alternative" in cosmetic formulations. Effects are modest and require continuous twice-daily topical application; it does not match the magnitude of clinical botulinum toxin but has a substantially better safety profile and does not require injection.',
+    pros: [
+      'Genuine peer-reviewed evidence of wrinkle-depth reduction with twice-daily topical use',
+      'Excellent safety profile — no systemic absorption when applied topically at cosmetic concentrations',
+      'No needles — incorporated into creams and serums',
+      'Mechanism is plausible and well-characterised (SNAP-25 / SNARE inhibition)',
+      'Compatible with most other cosmetic actives (retinol, niacinamide, peptides)',
+    ],
+    cons: [
+      'Effect size is modest — typical wrinkle-depth reduction ~10–30% over 4 weeks, far below botulinum toxin',
+      'Skin penetration of a charged hexapeptide is limited; vehicle/formulation matters a lot',
+      'Requires continuous use — effects regress within days of stopping application',
+      'Most published trials are small, industry-sponsored, and short (≤4 weeks)',
+      'Not a substitute for clinical neurotoxin treatment in patients seeking dramatic results',
+    ],
+    dosage: { typical: '5–10% topical formulation', frequency: 'Twice daily on affected areas', route: 'Topical (cream / serum)', cycle: 'Continuous; effects diminish on stopping' },
+    refs: [
+      { label: 'Wang et al. (2013) — Randomized placebo-controlled trial of argireline for wrinkles in Chinese subjects (Am J Clin Dermatol)', url: 'https://pubmed.ncbi.nlm.nih.gov/23417317/' },
+      { label: 'Lungu et al. (2013) — Pilot study of topical acetyl hexapeptide-8 (SNAP-25 competitive inhibitor) for blepharospasm (Eur J Neurol)', url: 'https://pubmed.ncbi.nlm.nih.gov/23146065/' },
+    ],
+  },
+  {
+    name: 'Matrixyl', aka: 'Palmitoyl Pentapeptide-4 · pal-KTTKS · Matrixyl 3000',
+    type: 'Skin & Hair', typeColor: '#C7A1D8',
+    tags: [
+      {label:'Topical', bg:'rgba(199,161,216,0.15)', color:'#C7A1D8'},
+      {label:'Collagen', bg:'rgba(199,161,216,0.1)', color:'#C7A1D8'},
+      {label:'Anti-ageing', bg:'rgba(199,161,216,0.08)', color:'#C7A1D8'},
+    ],
+    description: 'Matrixyl is the trade name for palmitoyl pentapeptide-4 (palmitoyl-KTTKS), a synthetic peptide derived from a fragment of type I procollagen. The palmitic-acid chain markedly improves dermal penetration, allowing the KTTKS pentapeptide to reach fibroblasts where it stimulates synthesis of collagen I, collagen III, fibronectin, and glycosaminoglycans. Originally developed by Sederma in the early 2000s, it has become one of the most widely used cosmeceutical peptides. The "Matrixyl 3000" variant pairs pal-KTTKS with palmitoyl tetrapeptide-7 for additional anti-inflammatory action.',
+    pros: [
+      'Peer-reviewed evidence (Robinson 2005, Int J Cosmet Sci) of measurable photoaged-skin improvement',
+      'Stimulates collagen I and III production at the dermal level',
+      'Lipid-conjugation gives better skin penetration than naked KTTKS',
+      'Excellent safety record across a decade of cosmetic use',
+      'Synergises with retinoids and vitamin C in finished formulations',
+    ],
+    cons: [
+      'Effect size is modest and gradual — typically 8–12 weeks of twice-daily use to see results',
+      'Penetration is highly formulation-dependent; emulsion, pH, and excipients matter',
+      'Most clinical evidence is industry-funded with small sample sizes',
+      'Stability of the peptide in finished products varies widely between brands',
+      'Cannot reverse deep static wrinkles — best for fine lines and texture',
+    ],
+    dosage: { typical: '3–8% topical formulation', frequency: 'Twice daily', route: 'Topical (cream / serum)', cycle: '8–12 weeks minimum to assess response; ongoing for maintenance' },
+    refs: [
+      { label: 'Robinson et al. (2005) — Topical palmitoyl pentapeptide improves photoaged facial skin (Int J Cosmet Sci)', url: 'https://pubmed.ncbi.nlm.nih.gov/18492182/' },
+      { label: 'Choi et al. (2014) — Dermal stability and skin permeation of KTTKS and palmitoyl-KTTKS (Biomol Ther)', url: 'https://pubmed.ncbi.nlm.nih.gov/25143811/' },
+    ],
+  },
+
+  // ── New entries in existing categories (v1.6.0) ──
+  {
+    name: 'Mod GRF (1-29)', aka: 'CJC-1295 without DAC · Modified GRF 1-29',
+    type: 'GH Secretagogues', typeColor: '#378ADD',
+    tags: [
+      {label:'GHRH', bg:'rgba(55,138,221,0.15)', color:'#378ADD'},
+      {label:'Pulsatile', bg:'rgba(55,138,221,0.1)', color:'#378ADD'},
+      {label:'Short half-life', bg:'rgba(55,138,221,0.08)', color:'#378ADD'},
+    ],
+    description: 'Mod GRF (1-29) is a 29-amino-acid GHRH analogue with four amino-acid substitutions (D-Ala², Gln⁸, Ala¹⁵, Leu²⁷) that protect it from rapid enzymatic degradation while preserving full GHRH receptor agonism. Unlike CJC-1295 with DAC — which uses a drug-affinity-complex linker to bind to serum albumin and extend half-life to ~8 days — Mod GRF (1-29) lacks the DAC linker and therefore has a half-life of roughly 30 minutes. This gives it a sharp, short pulse of GH release that mimics endogenous physiology when stacked with a GHRP (GHRP-2, GHRP-6, Ipamorelin), making it the preferred GHRH analogue for users who want pulsatile rather than tonic GH elevation.',
+    pros: [
+      'Sharp, physiological GH pulse — closer to endogenous patterns than long-acting analogues',
+      'Stacks synergistically with any GHRP for amplified pulse height',
+      'Short half-life allows precise pre-bed or post-workout timing',
+      'No tonic IGF-1 elevation — preserves the GH negative-feedback axis',
+      'Cleanest GHRH option for users monitoring with stim tests',
+    ],
+    cons: [
+      'Requires multiple SC injections per day to be effective (typically 1–3×)',
+      'Not approved for human use anywhere — entirely research-grade',
+      'Compounding-pharmacy stability data is sparse; reconstituted vials must be cold-chained',
+      'Pulse height varies widely between users and is hard to predict without IGF-1 monitoring',
+      'Easy to confuse with CJC-1295-DAC products — labelling errors at suppliers are common',
+    ],
+    dosage: { typical: '100 mcg per dose (often paired 1:1 with a GHRP)', frequency: '1–3× daily, separated by ≥3h', route: 'SC injection', cycle: '8–16 weeks; cycle off to preserve receptor sensitivity' },
+    refs: [
+      { label: 'Teichman et al. (2006) — Prolonged GH/IGF-1 stimulation by CJC-1295 in healthy adults (J Clin Endocrinol Metab)', url: 'https://pubmed.ncbi.nlm.nih.gov/16352683/' },
+      { label: 'Alba et al. (2006) — CJC-1295 normalizes growth in GHRH knockout mouse (Am J Physiol Endocrinol Metab)', url: 'https://pubmed.ncbi.nlm.nih.gov/16822960/' },
+    ],
+  },
+  {
+    name: 'Larazotide acetate', aka: 'AT-1001 · INN-202 · zonulin antagonist',
+    type: 'Healing & Repair', typeColor: '#5DCAA5',
+    tags: [
+      {label:'Gut barrier', bg:'rgba(93,202,165,0.15)', color:'#5DCAA5'},
+      {label:'Tight junction', bg:'rgba(93,202,165,0.1)', color:'#5DCAA5'},
+      {label:'Celiac', bg:'rgba(93,202,165,0.08)', color:'#5DCAA5'},
+    ],
+    description: 'Larazotide acetate (formerly AT-1001) is an oral octapeptide that antagonises zonulin, the endogenous regulator of intestinal tight junctions. By stabilising tight junctions in the small-intestinal epithelium, it reduces paracellular permeability ("leaky gut") triggered by gluten and other dietary insults. Originally derived from a Vibrio cholerae toxin fragment, it does NOT enter systemic circulation — its action is restricted to the intestinal lumen. Larazotide reached Phase 3 trials for adjunctive treatment of celiac disease in patients on a gluten-free diet who continue to experience symptoms; the CeDLara trial (2021–2022) failed its primary endpoint, but the drug has continued to attract research interest for non-celiac gluten sensitivity, IBS-D, and other tight-junction-related GI conditions.',
+    pros: [
+      'Most clinically validated tight-junction-stabilising peptide ever developed',
+      'No systemic absorption — gut-luminal action only, excellent safety profile',
+      'Multiple Phase 2 trials demonstrated symptomatic benefit in celiac patients still reacting to gluten cross-contamination',
+      'Mechanism (zonulin antagonism) is well characterised in cell and animal models',
+      'Offers a research tool for studying gut-permeability hypotheses',
+    ],
+    cons: [
+      'Phase 3 CeDLara trial (2022) missed its primary endpoint — efficacy magnitude is unclear',
+      'Not approved by FDA, EMA, or any major regulator',
+      'Must be taken before every meal — three or more times daily compliance is challenging',
+      'Limited evidence outside celiac disease — IBS, NAFLD, autoimmune use is exploratory',
+      'Research-grade material is hard to source at therapeutic purity',
+    ],
+    dosage: { typical: '0.25–8 mg orally before meals (Phase 2 range)', frequency: '3× daily before meals', route: 'Oral (designed for luminal action)', cycle: 'Continuous in study protocols; clinical use undefined' },
+    refs: [
+      { label: 'Slifer et al. (2021) — Larazotide acetate: pharmacological peptide approach to tight junction regulation (Am J Physiol Gastrointest Liver Physiol)', url: 'https://pubmed.ncbi.nlm.nih.gov/33881350/' },
+      { label: 'Khaleghi et al. (2016) — Tight junction regulation in celiac disease, focus on larazotide acetate (Therap Adv Gastroenterol)', url: 'https://pubmed.ncbi.nlm.nih.gov/26770266/' },
+    ],
+  },
 ];
 
 const LIB_TYPES = [...new Set(PEPTIDE_LIBRARY.map(p => p.type))];
@@ -8631,6 +8744,89 @@ document.addEventListener('keydown', e => {
   }
 })();
 
+</script>
+<script>
+  // ── App version + update checker ─────────────────────────────────────
+  // Compares the embedded APP_VERSION against version.json fetched from the
+  // origin (with a cache-busting query so the service worker can't return a
+  // stale copy). On click of the refresh button OR on app boot:
+  //   - Show the latest version under the button
+  //   - If a newer version is available, unregister the SW, clear caches,
+  //     and force a hard reload so the user picks up the new build.
+  const APP_VERSION = '1.6.0';
+  (function initVersionUI(){
+    const badge = document.getElementById('appVersionBadge');
+    if (badge) badge.textContent = 'v' + APP_VERSION;
+  })();
+
+  function _verToTuple(v){return String(v||'').split('.').map(n=>parseInt(n,10)||0);}
+  function _verNewer(latest, current){
+    const a = _verToTuple(latest), b = _verToTuple(current);
+    for (let i=0; i<Math.max(a.length,b.length); i++) {
+      if ((a[i]||0) > (b[i]||0)) return true;
+      if ((a[i]||0) < (b[i]||0)) return false;
+    }
+    return false;
+  }
+
+  async function _applyUpdate() {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) await r.unregister();
+      }
+      if ('caches' in self) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch (e) { console.warn('cache clear failed', e); }
+    // Force a fresh load (bypass HTTP cache)
+    location.reload();
+  }
+
+  let _updatePromise = null;
+  async function checkForUpdates(opts) {
+    const silent = opts && opts.silent;
+    const status = document.getElementById('updateStatus');
+    if (status && !silent) {
+      status.style.display = '';
+      status.style.color = 'var(--text3)';
+      status.textContent = 'Checking…';
+    }
+    try {
+      // Cache-bust to ensure we don't read a stale SW-cached version.json
+      const res = await fetch('version.json?ts=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const latest = String(data.version || '');
+      if (!latest) throw new Error('no version field');
+      if (_verNewer(latest, APP_VERSION)) {
+        if (status) {
+          status.style.display = '';
+          status.style.color = 'var(--accent)';
+          status.textContent = 'Updating to v' + latest + '…';
+        }
+        await _applyUpdate();
+      } else if (!silent) {
+        if (status) { status.style.color = 'var(--green)'; status.textContent = 'Up to date · v' + latest; }
+        setTimeout(() => { if (status) status.style.display = 'none'; }, 4000);
+      } else {
+        if (status) status.style.display = 'none';
+      }
+    } catch (e) {
+      if (!silent && status) {
+        status.style.color = 'var(--red)';
+        status.textContent = 'Check failed';
+        setTimeout(() => { if (status) status.style.display = 'none'; }, 4000);
+      }
+    }
+  }
+
+  document.getElementById('updateCheckBtn')?.addEventListener('click', () => checkForUpdates({silent:false}));
+
+  // Auto-check on app boot (silent — only surfaces if an update is available).
+  // Tiny delay so we don't block boot.
+  setTimeout(() => checkForUpdates({silent:true}), 1500);
 </script>
 <script>
   if ('serviceWorker' in navigator) {

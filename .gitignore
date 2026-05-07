@@ -11,6 +11,7 @@ desktop.ini
 .refs-input.json
 .refs-verified.json
 .refs-summary.md
+.new-library-refs.json
 
 # Logs
 *.log
