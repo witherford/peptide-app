@@ -2252,6 +2252,12 @@ function convertPrice(gbpPriceStr) {
 // RENDER STACKS VIEW
 // ════════════════════════════════════════════════════════════
 function renderStacks() {
+  // Drop draft stacks that the user never named (e.g. modal opened then closed
+  // without saving). Auto-save creates a draft on open; this catches the case
+  // where the modal was dismissed via a back-button or page-reload.
+  const before = APP.stacks.length;
+  APP.stacks = APP.stacks.filter(s => !(s.isDraft && !(s.name || '').trim()));
+  if (APP.stacks.length !== before) saveApp();
   const root = document.getElementById('stacks-root');
   root.innerHTML = '';
 
@@ -3164,11 +3170,21 @@ function buildScheduleGrid(stack) {
 
   html += `<div style="margin-top:0;padding-top:4px">
     <div style="font-size:9.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Edit schedule per peptide</div>
-    <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Tap to activate · Tap again to step −25% · Hold for custom + replicate to other days · Allocate mode: tap = +100mcg</div>`;
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:10px;font-size:11px;color:var(--text2);line-height:1.7">
+      <div style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">How to edit days</div>
+      <ul style="margin:0;padding-left:16px;list-style:disc">
+        <li><strong>Single tap</strong> on an empty day &rarr; sets the dose to the peptide's <em>Dosage per injection</em> value</li>
+        <li><strong>Single tap</strong> on an active day &rarr; bumps the dose <strong>+10%</strong> of the dose-per-injection</li>
+        <li><strong>Double tap</strong> on a day &rarr; reduces the dose by <strong>−10%</strong> (deactivates the day at 0)</li>
+        <li><strong>Triple tap</strong> on a day &rarr; opens the bulk-add menu to set a custom dose and replicate it across other days/weeks</li>
+      </ul>
+    </div>`;
 
   stack.peptides.forEach((p, pi) => {
     const col = colors[pi];
     const doseLabel = p.doseAmount ? `${p.doseAmount} ${p.doseUnit || 'mcg'}` : (p.dose || '');
+    // Compact dose-per-injection label used in the Allocate pill (e.g. "500mcg" or "2mg")
+    const defaultDoseDisplay = p.doseAmount ? `${p.doseAmount}${p.doseUnit || 'mcg'}` : '?mcg';
 
     // Quantity tracker (per-peptide chip in header — kept for at-a-glance while editing)
     const totalMg     = peptideTotalMg(p);
@@ -3193,10 +3209,10 @@ function buildScheduleGrid(stack) {
           ${doseLabel ? `<span style="font-size:10px;color:${col.text};font-family:'JetBrains Mono',monospace;background:${col.bg};padding:1px 6px;border-radius:3px">${escHtml(doseLabel)} default</span>` : ''}
           ${qtyBadge}
         </div>
-        <label class="sched-allocate-toggle" data-peptide="${escHtml(p.id)}" title="Allocate mode: tap a day to add 100mcg; long-press to type a custom amount and replicate"
+        <label class="sched-allocate-toggle" data-peptide="${escHtml(p.id)}" title="Highlight this peptide. Tap = ${defaultDoseDisplay} · single tap on active day = +10% · double tap = −10% · triple tap = bulk popover"
           style="display:flex;align-items:center;gap:5px;background:${allocOn?'var(--accent)':'var(--bg3)'};border:1px solid ${allocOn?'var(--accent)':'var(--border)'};color:${allocOn?'#0a0f1a':'var(--text2)'};border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s">
           <input type="checkbox" data-allocate-checkbox="${escHtml(p.id)}" ${allocOn?'checked':''} style="margin:0;cursor:pointer;accent-color:${allocOn?'#0a0f1a':'var(--accent)'}">
-          <span>${allocOn?'Allocating · +100mcg/tap':'Allocate'}</span>
+          <span>${allocOn?`Allocating · +${escHtml(defaultDoseDisplay)}/tap`:'Allocate'}</span>
         </label>
         <button class="sched-reset-btn" data-stack="${escHtml(stack.id)}" data-peptide="${escHtml(p.id)}"
           style="background:none;border:1px solid var(--border);color:var(--text3);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;white-space:nowrap">
@@ -3616,6 +3632,57 @@ function setLengthFields(lengthStr) {
   else { numEl.value = ''; unitEl.value = 'weeks'; }
 }
 
+// ── Draft-stack auto-save ──
+// As soon as the user opens the Add/Edit Stack modal we materialise a real
+// stack object in APP.stacks (marked with isDraft=true if the user hasn't
+// hit "Save Stack" yet). That way every edit — peptide rows, schedule
+// click, dose change — has somewhere persistent to write to, so the user
+// no longer needs to Save → re-open just to use the schedule editor.
+// On Cancel, drafts that the user never named are cleaned up.
+
+function pbEnsureDraftStack() {
+  if (editingStackId) {
+    const existing = APP.stacks.find(s => s.id === editingStackId);
+    if (existing) return existing;
+  }
+  const id = uid();
+  editingStackId = id;
+  const draft = {
+    id,
+    name: document.getElementById('sf-name')?.value || '',
+    categoryId: document.getElementById('sf-category')?.value || (APP.categories?.[0]?.id || ''),
+    length: getLengthString() || '8 weeks',
+    notes: document.getElementById('sf-notes')?.value || '',
+    waterPerVial: parseFloat(document.getElementById('sf-water-per-vial')?.value) || 2,
+    peptides: JSON.parse(JSON.stringify(currentPeptideRows.map(p => ({
+      ...p,
+      dose: p.doseAmount && p.doseUnit ? p.doseAmount + ' ' + p.doseUnit : (p.dose || ''),
+    })))),
+    bacWater: { qty: '', retailerA: { name: '', url: '' }, retailerB: { name: '', url: '' } },
+    isDraft: true,
+  };
+  APP.stacks.push(draft);
+  saveApp();
+  return draft;
+}
+
+// Sync current form state into the draft stack so schedule clicks operate
+// on up-to-date peptide data (colours, days, doseAmount/Unit, vialQty).
+function pbSyncDraftStack() {
+  if (!editingStackId) return;
+  const stack = APP.stacks.find(s => s.id === editingStackId);
+  if (!stack) return;
+  stack.peptides = JSON.parse(JSON.stringify(currentPeptideRows.map(p => ({
+    ...p,
+    dose: p.doseAmount && p.doseUnit ? p.doseAmount + ' ' + p.doseUnit : (p.dose || ''),
+  }))));
+  stack.length = getLengthString() || stack.length || '8 weeks';
+  stack.name   = document.getElementById('sf-name')?.value ?? stack.name;
+  stack.notes  = document.getElementById('sf-notes')?.value ?? stack.notes;
+  stack.waterPerVial = parseFloat(document.getElementById('sf-water-per-vial')?.value) || stack.waterPerVial || 2;
+  saveApp();
+}
+
 function openStackModal(stack, forceCatId) {
   editingStackId = stack?.id || null;
   stackModalTitle.textContent = stack ? 'Edit Stack' : 'Add Stack';
@@ -3676,9 +3743,28 @@ function closeStackModal() {
   document.body.style.overflow = '';
 }
 
-document.getElementById('stackModalClose').addEventListener('click', closeStackModal);
-document.getElementById('stackModalCancel').addEventListener('click', closeStackModal);
-stackModal.addEventListener('click', e => { if (e.target === stackModal) closeStackModal(); });
+// Cancel discards an unsaved draft (no name). Drafts that have a name
+// are kept as-is — auto-save semantics mean their data is already persisted.
+function cancelStackModal() {
+  if (editingStackId) {
+    const idx = APP.stacks.findIndex(s => s.id === editingStackId);
+    if (idx >= 0) {
+      const st = APP.stacks[idx];
+      if (st.isDraft && !(st.name || '').trim()) {
+        APP.stacks.splice(idx, 1);
+        saveApp();
+      }
+    }
+  }
+  editingStackId = null;
+  closeStackModal();
+  // Re-render the stacks list in case we removed a draft.
+  if (typeof renderStacks === 'function') renderStacks();
+}
+
+document.getElementById('stackModalClose').addEventListener('click', cancelStackModal);
+document.getElementById('stackModalCancel').addEventListener('click', cancelStackModal);
+stackModal.addEventListener('click', e => { if (e.target === stackModal) cancelStackModal(); });
 
 // ── Product picker — wired in CATALOGUE section below ──
 
@@ -3702,6 +3788,11 @@ if (_sfAddPeptideEl) _sfAddPeptideEl.addEventListener('click', () => {
 const WEEK_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 function renderPeptideRows() {
+  // The moment the user has at least one peptide row, materialise a draft
+  // stack so the schedule editor (which looks up APP.stacks[editingStackId])
+  // can persist day-clicks immediately — no need to Save → re-open first.
+  if (currentPeptideRows.length > 0) pbEnsureDraftStack();
+  if (editingStackId) pbSyncDraftStack();
   const container = document.getElementById('sf-peptide-rows');
   container.innerHTML = '';
 
@@ -4435,24 +4526,13 @@ function pbRenderModalSchedule() {
 
   section.style.display = '';
 
-  // Build a temporary stack-like object from currentPeptideRows so buildScheduleGrid can render it.
-  // If we are editing an existing stack, use it directly (so weekDays/weekDoses are live).
-  // For a new (unsaved) stack, create a temporary stub.
-  let schedStack = null;
-  if (editingStackId) {
-    schedStack = APP.stacks.find(s => s.id === editingStackId);
-  }
-  if (!schedStack) {
-    // New stack: build a stub so we still show the default schedule grid
-    schedStack = {
-      id: '__modal_preview__',
-      name: document.getElementById('sf-name')?.value || 'New Stack',
-      length: getLengthString() || '8 weeks',
-      peptides: currentPeptideRows,
-      weekDays: {},
-      weekDoses: {},
-    };
-  } else {
+  // Materialise a draft stack the first time we render the schedule for a new
+  // stack — so clicks on day cells (which look up APP.stacks by id) actually
+  // persist. The draft is cleaned up on Cancel if the user never names it.
+  pbEnsureDraftStack();
+  pbSyncDraftStack();
+  let schedStack = APP.stacks.find(s => s.id === editingStackId);
+  if (schedStack) {
     // Sync peptides from the live editing rows so colours / days / names reflect edits
     schedStack = Object.assign({}, schedStack, {
       peptides: currentPeptideRows,
@@ -4461,6 +4541,11 @@ function pbRenderModalSchedule() {
   }
 
   body.innerHTML = buildScheduleGrid(schedStack);
+
+  // Refresh the needle estimate so it reflects the latest per-week schedule
+  // (clicks in the grid mutate stack.weekDays/weekDoses; the needle calc reads
+  // those, so it needs to re-run after every grid render).
+  if (typeof updateNeedleSummary === 'function') updateNeedleSummary();
 
   // Wire allocate-mode toggles (per-peptide checkbox in the schedule header).
   body.querySelectorAll('.sched-allocate-toggle').forEach(label => {
@@ -4475,75 +4560,83 @@ function pbRenderModalSchedule() {
 
   // Wire up per-peptide day toggle interactions.
   // - Tap (no allocate mode):    activate at default → click again to step −25% → 0 deactivates
-  // - Tap (allocate mode ON):    add +100mcg to that day's dose
-  // - Long press (700ms):        open dose popover (custom value + replicate to other days)
+  // - Single tap on inactive day:   set dose to peptide's "Dosage per injection" value
+  // - Single tap on active day:     +10% of dose-per-injection
+  // - Double tap:                   −10% of dose-per-injection (deactivates at 0)
+  // - Triple tap:                   open the bulk dose popover (replaces long-press)
   body.querySelectorAll('.sched-day-toggle').forEach(cell => {
-    let lpTimer = null;
-    let wasLongPress = false;
+    let clickCount = 0;
+    let clickTimer = null;
+    const TAP_GAP_MS = 280; // window in which extra taps still count as part of the burst
 
-    cell.addEventListener('pointerdown', () => {
-      wasLongPress = false;
-      lpTimer = setTimeout(() => {
-        wasLongPress = true;
-        const pepId = cell.dataset.peptide;
-        const week  = +cell.dataset.week;
-        const day   = +cell.dataset.day;
-        const st = APP.stacks.find(s => s.id === cell.dataset.stack);
-        if (!st) return;
-        const p = st.peptides.find(p2 => p2.id === pepId);
-        if (!p) return;
-        pbOpenDosePopover(st, p, week, day);
-      }, 700);
-    });
-    cell.addEventListener('pointerup',     () => clearTimeout(lpTimer));
-    cell.addEventListener('pointercancel', () => clearTimeout(lpTimer));
-    cell.addEventListener('pointermove',   () => clearTimeout(lpTimer));
-
-    cell.addEventListener('click', function(e) {
-      e.stopPropagation();
-      if (wasLongPress) return;
-      const stackId  = this.dataset.stack;
-      const pepId    = this.dataset.peptide;
-      const week     = +this.dataset.week;
-      const day      = +this.dataset.day;
-      const isActive = this.dataset.active === '1';
+    function handleTap(count) {
+      const stackId  = cell.dataset.stack;
+      const pepId    = cell.dataset.peptide;
+      const week     = +cell.dataset.week;
+      const day      = +cell.dataset.day;
+      const isActive = cell.dataset.active === '1';
       const st = APP.stacks.find(s => s.id === stackId);
       if (!st) return;
       const p = st.peptides.find(p2 => p2.id === pepId);
       if (!p) return;
-
       const defaultDose = parseFloat(p.doseAmount) || 0;
-      const doseUnit = p.doseUnit || 'mcg';
+      const doseUnit   = p.doseUnit || 'mcg';
 
-      // Allocate mode: every tap adds +100mcg to that day, regardless of active state.
-      if (pbIsAllocateMode(pepId)) {
-        const currentOverride = st.weekDoses?.[pepId]?.[week]?.[day];
-        const currentDose = currentOverride !== undefined && currentOverride !== ''
-          ? parseFloat(currentOverride)
-          : (isActive ? defaultDose : 0);
-        const newDose = pbRoundDose(pbAddMcgToDose(currentDose, doseUnit, 100), doseUnit);
-        pbWriteDayDose(st, p, week, day, newDose);
-        saveApp();
-        pbRenderModalSchedule();
+      if (count >= 3) {
+        // Triple tap → open bulk dose popover for this day
+        pbOpenDosePopover(st, p, week, day);
         return;
       }
 
-      // Default mode: tap activates at default; tap again steps −25%; reaching 0 deactivates.
-      if (!isActive) {
-        pbWriteDayDose(st, p, week, day, defaultDose);
-      } else {
-        const override = st.weekDoses?.[pepId]?.[week]?.[day];
-        const currentDose = override !== undefined && override !== '' ? parseFloat(override) : defaultDose;
-        const step = defaultDose * 0.25;
+      const override = st.weekDoses?.[pepId]?.[week]?.[day];
+      const currentDose = override !== undefined && override !== ''
+        ? parseFloat(override)
+        : (isActive ? defaultDose : 0);
+      const step = defaultDose * 0.10; // ±10% of dose-per-injection per click
+
+      if (count === 2) {
+        // Double tap → step DOWN by 10% (deactivate if reaches 0 or default has no value)
+        if (defaultDose <= 0) return;
         const newDose = currentDose - step;
-        if (newDose <= 0 || step <= 0) {
+        if (newDose <= 0) {
           pbWriteDayDose(st, p, week, day, null);
         } else {
+          pbWriteDayDose(st, p, week, day, pbRoundDose(newDose, doseUnit));
+        }
+      } else {
+        // Single tap
+        if (!isActive) {
+          // Inactive day → activate at the peptide's default ("Dosage per injection")
+          if (defaultDose <= 0) {
+            showToast('Set a "Dosage per injection" value on the peptide first');
+            return;
+          }
+          pbWriteDayDose(st, p, week, day, defaultDose);
+        } else {
+          // Already active → step UP by 10%
+          if (defaultDose <= 0) return;
+          const newDose = currentDose + step;
           pbWriteDayDose(st, p, week, day, pbRoundDose(newDose, doseUnit));
         }
       }
       saveApp();
       pbRenderModalSchedule();
+    }
+
+    cell.addEventListener('click', function(e) {
+      e.stopPropagation();
+      clickCount += 1;
+      if (clickTimer) clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => {
+        const count = clickCount;
+        clickCount = 0;
+        clickTimer = null;
+        handleTap(count);
+      }, TAP_GAP_MS);
+    });
+    // Defensive: cancel pending taps if user pointer-cancels (e.g. drag scroll)
+    cell.addEventListener('pointercancel', () => {
+      if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; clickCount = 0; }
     });
   });
 
@@ -4823,35 +4916,7 @@ function updateNeedleSummary() {
 
   if (!currentPeptideRows.length) return;
 
-  // Calculate total injections per week
-  // Stacked pairs share a needle on days they both inject
-  let totalNeedlesPerWeek = 0;
-  const usedDaySlots = {}; // dayIndex -> [peptideIds that already share a needle]
-
-  // Simple approach: group peptides by their days, considering stackWith
-  // For each day, group stacked peptides together, each group = 1 needle
-  for (let d = 0; d < 7; d++) {
-    const injectingOnThisDay = currentPeptideRows.filter(p => (p.days||[]).includes(d));
-    if (!injectingOnThisDay.length) continue;
-
-    // Union-find to group stacked peptides
-    const groups = [];
-    const placed = new Set();
-    injectingOnThisDay.forEach(p => {
-      if (placed.has(p.id)) return;
-      const group = [p];
-      placed.add(p.id);
-      (p.stackWith || []).forEach(sid => {
-        const sp = injectingOnThisDay.find(op => op.id === sid);
-        if (sp && !placed.has(sp.id)) { group.push(sp); placed.add(sp.id); }
-      });
-      groups.push(group);
-    });
-    totalNeedlesPerWeek += groups.length;
-  }
-
   // Derive total protocol duration in weeks from the "Protocol Length" inputs.
-  // Falls back to 8 weeks if the user hasn't entered a length.
   let weeks = 8;
   const lenStr = (typeof getLengthString === 'function') ? getLengthString() : '';
   const wm = lenStr.match(/(\d+(?:\.\d+)?)\s*week/i);
@@ -4861,31 +4926,46 @@ function updateNeedleSummary() {
   else if (dm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1]) / 7), 52));
   else if (mm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52));
 
-  // Build summary HTML
-  const rows = [];
-  for (let d = 0; d < 7; d++) {
-    const inj = currentPeptideRows.filter(p => (p.days||[]).includes(d));
-    if (!inj.length) continue;
-    // Group stacked
-    const placed = new Set();
-    const groups = [];
-    inj.forEach(p => {
-      if (placed.has(p.id)) return;
-      const group = [p];
-      placed.add(p.id);
-      (p.stackWith||[]).forEach(sid => {
-        const sp = inj.find(op=>op.id===sid);
-        if (sp && !placed.has(sp.id)) { group.push(sp); placed.add(sp.id); }
+  // Walk EVERY (week, day) — respecting the per-week override stored on the
+  // stack — and count needles. Stacked peptides that fire on the same day
+  // share a needle (1 group = 1 needle). This fixes the previous bug where
+  // we only looked at the row's global p.days array, ignoring per-week
+  // edits made through the schedule editor.
+  const stack = editingStackId ? APP.stacks.find(s => s.id === editingStackId) : null;
+  const peptideActiveDaysForWeek = (p, w) => {
+    const wd = stack?.weekDays?.[p.id]?.[w];
+    return wd !== undefined ? wd : (p.days || []);
+  };
+
+  let totalNeedles = 0;
+  const perDayCount = Array(7).fill(0);   // sum of needle groups per weekday, across all weeks
+  const perDaySample = Array(7).fill(null); // sample peptide-list for the rows display
+
+  for (let w = 0; w < weeks; w++) {
+    for (let d = 0; d < 7; d++) {
+      const injectingOnThisDay = currentPeptideRows.filter(p => peptideActiveDaysForWeek(p, w).includes(d));
+      if (!injectingOnThisDay.length) continue;
+      // Union-find: group peptides that share a needle via stackWith.
+      const placed = new Set();
+      const groups = [];
+      injectingOnThisDay.forEach(p => {
+        if (placed.has(p.id)) return;
+        const group = [p];
+        placed.add(p.id);
+        (p.stackWith || []).forEach(sid => {
+          const sp = injectingOnThisDay.find(op => op.id === sid);
+          if (sp && !placed.has(sp.id)) { group.push(sp); placed.add(sp.id); }
+        });
+        groups.push(group);
       });
-      groups.push(group);
-    });
-    const needleCount = groups.length;
-    const detail = groups.map(g => g.map(p=>p.name||'?').join('+') + (g.length>1?' (shared)':'')).join(', ');
-    rows.push(`<div class="needle-row"><span>${WEEK_DAYS[d]}: ${escHtml(detail)}</span><strong>${needleCount} needle${needleCount>1?'s':''}</strong></div>`);
+      totalNeedles += groups.length;
+      perDayCount[d] += groups.length;
+      if (!perDaySample[d]) perDaySample[d] = groups;
+    }
   }
 
-  const totalPerWeek = totalNeedlesPerWeek;
-  const estTotal = totalPerWeek * weeks;
+  const estTotal = totalNeedles;
+  const totalPerWeek = weeks > 0 ? Math.round((totalNeedles / weeks) * 10) / 10 : 0;
 
   const _existNeedle = document.getElementById('sf-needle-summary');
   if (_existNeedle) _existNeedle.remove();
@@ -5017,7 +5097,7 @@ function updateTotalPriceSummary() {
     ${itemsHtml}
     ${supplierLines ? `<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">${supplierLines}</div>` : ''}
     <div class="needle-total" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
-      <span>Total</span><span>${fmt(grandTotal)}${allHavePrices ? '' : ' <small style="color:var(--text3);font-weight:400">(partial)</small>'}</span>
+      <span>Total <small style="color:var(--text3);font-weight:400;letter-spacing:0">(Postage not inc)</small></span><span>${fmt(grandTotal)}${allHavePrices ? '' : ' <small style="color:var(--text3);font-weight:400">(partial)</small>'}</span>
     </div>`;
 
   // Insert after the needle summary so it sits just below the needle estimate.
@@ -5146,7 +5226,12 @@ document.getElementById('stackModalSave').addEventListener('click', () => {
 
   if (editingStackId) {
     const idx = APP.stacks.findIndex(s => s.id === editingStackId);
-    if (idx >= 0) APP.stacks[idx] = stackData;
+    if (idx >= 0) {
+      // Preserve the draft id; clear the isDraft marker now that the user has named/saved it.
+      stackData.id = APP.stacks[idx].id;
+      delete stackData.isDraft;
+      APP.stacks[idx] = stackData;
+    }
   } else {
     APP.stacks.push(stackData);
   }
@@ -9022,7 +9107,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.7.0';
+  const APP_VERSION = '1.8.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
