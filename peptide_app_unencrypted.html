@@ -1041,7 +1041,7 @@
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
       <button class="shop-price-check-btn" id="catRefreshBtn">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-        Refresh All
+        <span id="catRefreshBtnLabel">Fetch latest prices</span>
       </button>
       <button class="shop-add-btn" id="catAddManualBtn">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
@@ -1109,7 +1109,7 @@
     <div id="catRoot">
       <div style="text-align:center;padding:48px 24px;color:var(--text3)">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        <div style="font-size:13px;">Hit <strong style="color:var(--accent)">Refresh All</strong> to pull live prices from UK Peptides &amp; Anglo Peptides.<br>Or <strong style="color:var(--accent)">+ Add a product manually</strong> to add your own product with a custom URL.</div>
+        <div style="font-size:13px;">Hit <strong style="color:var(--accent)">Fetch latest prices</strong> to pull live prices from UK Peptides &amp; Anglo Peptides.<br>Or <strong style="color:var(--accent)">+ Add a product manually</strong> to add your own product with a custom URL.</div>
       </div>
     </div>
   </div>
@@ -1725,28 +1725,31 @@
       <div class="form-group">
         <label class="form-label">Bacteriostatic Water</label>
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;align-items:flex-end">
-            <div>
-              <div style="font-size:10px;color:var(--text3);margin-bottom:4px">No. of vials</div>
-              <div style="display:flex;align-items:center;gap:6px">
-                <input class="form-input" id="sf-bac-vial-qty" type="number" min="1" max="99" step="1" value="1" style="width:64px;font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;text-align:center">
-                <span id="sf-bac-vial-size" style="font-size:11px;color:var(--text2);white-space:nowrap">10ml/vial</span>
-              </div>
-            </div>
-            <div style="flex:1;min-width:120px">
+          <!-- Hidden compat fields (populated from catalogue picker) -->
+          <input type="hidden" id="sf-bac-qty">
+          <input type="hidden" id="sf-bac-vial-qty" value="1">
+          <span id="sf-bac-vial-size" style="display:none">10ml/vial</span>
+
+          <!-- Picker button (visible when nothing picked) -->
+          <button type="button" id="sf-bac-add-btn" style="width:100%;background:var(--bg2);border:1px dashed var(--border2);color:var(--accent);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:11px 14px;border-radius:var(--radius-sm);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s">
+            💧 Add bacteriostatic water from catalogue
+          </button>
+
+          <!-- Selected product card (shown when bac water has been picked) -->
+          <div id="sf-bac-selected" style="display:none"></div>
+
+          <!-- Always-visible: ml added per peptide vial + cost est -->
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:10px">
+            <div style="flex:1;min-width:140px">
               <div style="font-size:10px;color:var(--text3);margin-bottom:4px">ml added per peptide vial</div>
               <input class="form-input" id="sf-water-per-vial" type="number" min="0.1" max="10" step="0.1" value="2" placeholder="2" style="font-size:12px">
-            </div>
-            <div style="flex:1;min-width:120px">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Total qty label</div>
-              <input class="form-input" id="sf-bac-qty" placeholder="auto" style="font-size:12px">
             </div>
             <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;justify-content:center;padding-bottom:2px">
               <span style="font-size:9.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)">Cost est.</span>
               <span id="sf-bac-price-display" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:var(--text3)">—</span>
             </div>
           </div>
-          <div style="background:var(--blue-bg);border:1px solid rgba(55,138,221,0.2);border-radius:var(--radius-sm);padding:7px 10px;font-size:11px;color:var(--blue);line-height:1.5">
+          <div style="background:var(--blue-bg);border:1px solid rgba(55,138,221,0.2);border-radius:var(--radius-sm);padding:7px 10px;font-size:11px;color:var(--blue);line-height:1.5;margin-top:8px">
             💧 Use the <strong>Guides</strong> page → <em>"Peptide Reconstitution Calculator"</em> to calculate how much water to add.
           </div>
           <div id="sf-water-warning" style="display:none;margin-top:8px;background:var(--red-bg);border:1px solid rgba(216,90,48,0.3);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--red);line-height:1.5"></div>
@@ -3486,6 +3489,10 @@ function openStackModal(stack, forceCatId) {
     ...p,
   })))) : [];
 
+  // Restore previously-picked bacteriostatic water (catalogue picker selection)
+  window._sfBacProduct = stack?.bacWater?.product || null;
+  renderBacWaterSelected();
+
   renderPeptideRows();
   renderUrlRows();
   renderStackingSection();
@@ -3748,9 +3755,17 @@ function renderStackingPairs() {
 // ── Water warning ──
 document.getElementById('sf-water-per-vial').addEventListener('input', () => { updateWaterWarning(); updateNeedleSummary(); clearTimeout(window._pbScheduleTimer); window._pbScheduleTimer = setTimeout(pbRenderModalSchedule, 100); });
 document.getElementById('sf-bac-qty').addEventListener('input', () => { updateWaterWarning(); });
-// Re-render schedule when protocol length changes (affects number of weeks shown)
-document.getElementById('sf-length-num')?.addEventListener('input', () => { clearTimeout(window._pbScheduleTimer); window._pbScheduleTimer = setTimeout(pbRenderModalSchedule, 300); });
-document.getElementById('sf-length-unit')?.addEventListener('change', () => { clearTimeout(window._pbScheduleTimer); window._pbScheduleTimer = setTimeout(pbRenderModalSchedule, 100); });
+// Re-render schedule + needle estimate when protocol length changes (affects week count)
+document.getElementById('sf-length-num')?.addEventListener('input', () => {
+  clearTimeout(window._pbScheduleTimer);
+  window._pbScheduleTimer = setTimeout(pbRenderModalSchedule, 300);
+  updateNeedleSummary();
+});
+document.getElementById('sf-length-unit')?.addEventListener('change', () => {
+  clearTimeout(window._pbScheduleTimer);
+  window._pbScheduleTimer = setTimeout(pbRenderModalSchedule, 100);
+  updateNeedleSummary();
+});
 
 // ── Bac water vial qty ──
 document.getElementById('sf-bac-vial-qty').addEventListener('input', function() {
@@ -3766,15 +3781,165 @@ function updateBacPriceDisplay() {
   const priceEl = document.getElementById('sf-bac-price-display');
   if (!priceEl) return;
   const qty = parseInt(document.getElementById('sf-bac-vial-qty')?.value||'1')||1;
-  // Find bac water product from catalogue
-  const bacProds = typeof catAllProducts==='function' ? catAllProducts().filter(p => /bac|bacterio|water/i.test(p.name)) : [];
-  if (!bacProds.length) { priceEl.textContent='—'; priceEl.style.color='var(--text3)'; return; }
-  const best = bacProds.reduce((a,b)=>(a.price??Infinity)<=(b.price??Infinity)?a:b);
-  if (best.price==null) { priceEl.textContent='—'; priceEl.style.color='var(--text3)'; return; }
+  // Prefer the explicitly-selected product (set by the catalogue picker);
+  // fall back to the cheapest bac water in the catalogue if nothing picked.
+  let chosen = window._sfBacProduct || null;
+  if (!chosen) {
+    const bacProds = typeof catAllProducts==='function' ? catAllProducts().filter(p => /bac|bacterio|water/i.test(p.name)) : [];
+    if (!bacProds.length) { priceEl.textContent='—'; priceEl.style.color='var(--text3)'; return; }
+    chosen = bacProds.reduce((a,b)=>(a.price??Infinity)<=(b.price??Infinity)?a:b);
+  }
+  if (chosen.price==null) { priceEl.textContent='—'; priceEl.style.color='var(--text3)'; return; }
   const sym = currencySymbol(), rate = fxRate();
-  priceEl.textContent = sym + (best.price * rate * qty).toFixed(rate>=100?0:2);
+  priceEl.textContent = sym + (chosen.price * rate * qty).toFixed(rate>=100?0:2);
   priceEl.style.color = 'var(--green)';
 }
+
+// ─── Bacteriostatic Water — catalogue picker + selected card ───
+// Selected product is held on window._sfBacProduct while the modal is open.
+// On save, it's persisted onto stack.bacWater.product (plus the existing
+// retailerA/qty fields stay in sync for legacy read paths).
+
+function syncBacQtyFromProduct() {
+  const stored = window._sfBacProduct;
+  const qty = Math.max(1, parseInt(document.getElementById('sf-bac-vial-qty').value)||1);
+  // Derive ml/vial from product name (e.g. "10ml Bacteriostatic Mixing Water" → 10)
+  const mlMatch = stored?.name?.match(/(\d+(?:\.\d+)?)\s*ml/i);
+  const ml = mlMatch ? mlMatch[1] : '10';
+  document.getElementById('sf-bac-qty').value = qty + ' × ' + ml + 'ml';
+  const sizeEl = document.getElementById('sf-bac-vial-size');
+  if (sizeEl) {
+    sizeEl.textContent = ml + 'ml/vial';
+    sizeEl.dataset.mlPerVial = ml;
+  }
+}
+
+function renderBacWaterSelected() {
+  const sel  = document.getElementById('sf-bac-selected');
+  const btn  = document.getElementById('sf-bac-add-btn');
+  if (!sel || !btn) return;
+  const stored = window._sfBacProduct || null;
+  if (!stored) {
+    sel.style.display = 'none';
+    sel.innerHTML = '';
+    btn.style.display = '';
+    updateBacPriceDisplay();
+    return;
+  }
+  sel.style.display = '';
+  btn.style.display = 'none';
+  const sym = currencySymbol(), rate = fxRate();
+  const qty = Math.max(1, parseInt(document.getElementById('sf-bac-vial-qty').value)||1);
+  const supplierLabel = stored.source==='uk-peptides' ? 'UK Peptides'
+                      : stored.source==='anglo-peptides' ? 'Anglo Peptides'
+                      : 'Manual';
+  const unitPrice = stored.price!=null ? sym+(stored.price*rate).toFixed(rate>=100?0:2) : '—';
+  sel.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${escHtml(stored.name)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${escHtml(supplierLabel)} · ${escHtml(unitPrice)} each${stored.url?` · <a href="${escHtml(stored.url)}" target="_blank" rel="noopener" style="color:var(--blue)">↗</a>`:''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <button type="button" id="sf-bac-qty-down" class="qty-btn" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);width:26px;height:26px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">−</button>
+        <input id="sf-bac-vial-qty-display" type="number" min="1" max="99" value="${qty}" style="width:42px;text-align:center;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:4px">
+        <button type="button" id="sf-bac-qty-up" class="qty-btn" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);width:26px;height:26px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">+</button>
+      </div>
+      <button type="button" id="sf-bac-remove" title="Remove" style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:11px">✕</button>
+    </div>`;
+  document.getElementById('sf-bac-qty-down').addEventListener('click', () => {
+    const cur = parseInt(document.getElementById('sf-bac-vial-qty').value)||1;
+    if (cur > 1) {
+      document.getElementById('sf-bac-vial-qty').value = cur - 1;
+      syncBacQtyFromProduct();
+      renderBacWaterSelected();
+      updateWaterWarning(); updateNeedleSummary();
+    }
+  });
+  document.getElementById('sf-bac-qty-up').addEventListener('click', () => {
+    const cur = parseInt(document.getElementById('sf-bac-vial-qty').value)||1;
+    document.getElementById('sf-bac-vial-qty').value = cur + 1;
+    syncBacQtyFromProduct();
+    renderBacWaterSelected();
+    updateWaterWarning(); updateNeedleSummary();
+  });
+  document.getElementById('sf-bac-vial-qty-display').addEventListener('change', function() {
+    const v = Math.max(1, parseInt(this.value)||1);
+    document.getElementById('sf-bac-vial-qty').value = v;
+    this.value = v;
+    syncBacQtyFromProduct();
+    renderBacWaterSelected();
+    updateWaterWarning(); updateNeedleSummary();
+  });
+  document.getElementById('sf-bac-remove').addEventListener('click', () => {
+    window._sfBacProduct = null;
+    document.getElementById('sf-bac-qty').value = '';
+    document.getElementById('sf-bac-vial-qty').value = '1';
+    renderBacWaterSelected();
+    updateWaterWarning(); updateNeedleSummary();
+  });
+  updateBacPriceDisplay();
+}
+
+function openBacWaterPicker() {
+  const allProds = (typeof catAllProducts === 'function' ? catAllProducts() : []) || [];
+  const bacProds = allProds.filter(p => /bac|bacterio|water/i.test(p.name));
+  // Build modal
+  const existing = document.getElementById('bacWaterPickerModal');
+  if (existing) existing.remove();
+  const sym = currencySymbol(), rate = fxRate();
+  const cards = bacProds.length ? bacProds.map(p => {
+    const price = p.price!=null ? sym+(p.price*rate).toFixed(rate>=100?0:2) : '—';
+    const supplier = p.source==='uk-peptides' ? 'UK Peptides' : p.source==='anglo-peptides' ? 'Anglo Peptides' : 'Manual';
+    const stockClass = (p.stock||'').toLowerCase()==='in stock' ? 'in' : (p.stock||'').toLowerCase()==='out of stock' ? 'out' : 'unk';
+    const stockColor = stockClass==='in' ? '#5DCAA5' : stockClass==='out' ? '#D85A30' : '#8b9ab5';
+    const stockLbl   = stockClass==='in' ? 'In Stock' : stockClass==='out' ? 'Out of Stock' : 'Unknown';
+    return `<div class="bac-pick-card" data-bac-name="${escHtml(p.name)}" data-bac-source="${escHtml(p.source||'')}" style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:all .15s">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${escHtml(p.name)}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap">
+          <span style="width:6px;height:6px;border-radius:50%;background:${stockColor};flex-shrink:0"></span>
+          <span style="font-size:10.5px;color:var(--text2)">${stockLbl}</span>
+          <span style="font-size:9.5px;color:var(--text3);background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:1px 6px">${escHtml(supplier)}</span>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:${p.price!=null?'var(--green)':'var(--text3)'}">${escHtml(price)}</div>
+      </div>
+    </div>`;
+  }).join('') : '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">No bacteriostatic water in catalogue.<br>Go to <strong>Catalogue</strong> tab and hit <strong>Fetch latest prices</strong>.</div>';
+  const modal = document.createElement('div');
+  modal.id = 'bacWaterPickerModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:flex;align-items:flex-end;justify-content:center';
+  modal.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:12px auto 0;flex-shrink:0"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:15px;font-weight:600">Pick bacteriostatic water</div>
+      <button type="button" id="bacPickerClose" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:12px 14px">${cards}</div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  document.getElementById('bacPickerClose').addEventListener('click', () => modal.remove());
+  modal.querySelectorAll('.bac-pick-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const name = card.dataset.bacName;
+      const prod = bacProds.find(p => p.name === name);
+      if (!prod) return;
+      window._sfBacProduct = prod;
+      document.getElementById('sf-bac-vial-qty').value = '1';
+      syncBacQtyFromProduct();
+      renderBacWaterSelected();
+      updateWaterWarning(); updateNeedleSummary();
+      modal.remove();
+    });
+    card.addEventListener('mouseenter', () => { card.style.background = 'var(--bg4)'; });
+    card.addEventListener('mouseleave', () => { card.style.background = 'var(--bg3)'; });
+  });
+}
+
+document.getElementById('sf-bac-add-btn')?.addEventListener('click', openBacWaterPicker);
 
 // ════════════════════════════════════════════════════════════
 // MODAL PROTOCOL SCHEDULE SECTION
@@ -4228,12 +4393,16 @@ function updateNeedleSummary() {
     totalNeedlesPerWeek += groups.length;
   }
 
-  // Estimate total protocol duration weeks
+  // Derive total protocol duration in weeks from the "Protocol Length" inputs.
+  // Falls back to 8 weeks if the user hasn't entered a length.
   let weeks = 8;
-  const sf = document.getElementById('sf-name');
-  // Use all days to infer max injection count per peptide
-  const maxDaysPerWeek = Math.max(1, ...currentPeptideRows.map(p => (p.days||[]).length || 1));
-  const approxTotalInjections = currentPeptideRows.reduce((sum, p) => sum + (p.days?.length || 1), 0) * weeks;
+  const lenStr = (typeof getLengthString === 'function') ? getLengthString() : '';
+  const wm = lenStr.match(/(\d+(?:\.\d+)?)\s*week/i);
+  const dm = lenStr.match(/(\d+(?:\.\d+)?)\s*day/i);
+  const mm = lenStr.match(/(\d+(?:\.\d+)?)\s*month/i);
+  if (wm)      weeks = Math.max(1, Math.min(Math.ceil(parseFloat(wm[1])), 52));
+  else if (dm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1]) / 7), 52));
+  else if (mm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52));
 
   // Build summary HTML
   const rows = [];
@@ -4267,17 +4436,141 @@ function updateNeedleSummary() {
   summaryEl.id = 'sf-needle-summary';
   summaryEl.className = 'needle-summary';
   summaryEl.innerHTML = `
-    <div class="needle-summary-title">💉 Needle Estimate (per 8-week protocol)</div>
+    <div class="needle-summary-title">💉 Needle Estimate (per ${weeks}-week protocol)</div>
     <div class="needle-total">
       <span>Per week</span><span>${totalPerWeek}</span>
     </div>
     <div class="needle-total">
-      <span>8 weeks total</span><span>${estTotal}</span>
+      <span>${weeks} week${weeks===1?'':'s'} total</span><span>${estTotal}</span>
     </div>`;
 
   // Insert before form-actions
   const formActions = stackModal.querySelector('.form-actions');
   formActions.parentNode.insertBefore(summaryEl, formActions);
+
+  // Refresh the Total Price section so it sits just below the needle estimate.
+  if (typeof updateTotalPriceSummary === 'function') updateTotalPriceSummary();
+}
+
+// Extract a peptide name's stem and mg size for fuzzy catalogue matching.
+// "TB-500 – 10mg Research Peptide (batch 108)" → { stem: 'tb500', mg: 10 }
+function _pbStemAndSize(name) {
+  if (!name) return { stem: '', mg: null };
+  const lower = name.toLowerCase();
+  // Take the substring up to the first size token
+  const sizeMatch = lower.match(/(\d+(?:\.\d+)?)\s*mg\b/);
+  const mg = sizeMatch ? parseFloat(sizeMatch[1]) : null;
+  // Stem = text BEFORE the first size token, alphanumerics only
+  const before = sizeMatch ? lower.slice(0, sizeMatch.index) : lower;
+  const stem = before.replace(/[^a-z0-9]/g, '');
+  return { stem, mg };
+}
+
+// Fuzzy catalogue match: prefer same stem AND same mg size; fall back to same stem only.
+function _pbBestPriceForRowName(prods, rowName) {
+  // Try the strict matcher first.
+  let best = catBestForPeptide(prods, rowName || '');
+  if (best && best.price != null) return best;
+  const { stem: rowStem, mg: rowMg } = _pbStemAndSize(rowName);
+  if (!rowStem) return null;
+  const candidates = prods.filter(cp => {
+    if (/bac|bacterio|water/i.test(cp.name)) return false;
+    if (cp.price == null) return false;
+    return _pbStemAndSize(cp.name).stem === rowStem;
+  });
+  if (!candidates.length) return null;
+  // Prefer same mg size
+  const sameSize = rowMg != null ? candidates.filter(cp => _pbStemAndSize(cp.name).mg === rowMg) : [];
+  const pool = sameSize.length ? sameSize : candidates;
+  return pool.reduce((a, b) => a.price <= b.price ? a : b);
+}
+
+// ── Total Price summary ──
+// Sums the cheapest catalogue match for each peptide (× vialQty) plus the
+// chosen bacteriostatic water (× vial count). Listed under the needle estimate
+// so the user sees the full cost of the protocol at a glance.
+function updateTotalPriceSummary() {
+  const existing = document.getElementById('sf-total-price-summary');
+  if (existing) existing.remove();
+  if (!currentPeptideRows.length && !window._sfBacProduct) return;
+
+  const sym = currencySymbol(), rate = fxRate();
+  const allProds = (typeof catAllProducts === 'function') ? catAllProducts() : [];
+  const lineItems = [];        // {name, qty, unitPrice, total, supplier, hasPrice}
+  const supplierTotals = {};   // supplierLabel -> running total in GBP base
+  let grandTotal = 0;
+  let allHavePrices = true;
+
+  currentPeptideRows.forEach(p => {
+    const qty = Math.max(1, parseInt(p.vialQty) || 1);
+    const best = _pbBestPriceForRowName(allProds, p.name || '');
+    if (!best || best.price == null) {
+      lineItems.push({ name: p.name || 'Peptide', qty, unitPrice: null, total: null, supplier: '—', hasPrice: false });
+      allHavePrices = false;
+      return;
+    }
+    const total = best.price * qty;
+    grandTotal += total;
+    const supplier = best.source === 'uk-peptides' ? 'UK Peptides'
+                   : best.source === 'anglo-peptides' ? 'Anglo Peptides'
+                   : 'Manual';
+    supplierTotals[supplier] = (supplierTotals[supplier] || 0) + total;
+    lineItems.push({ name: p.name || 'Peptide', qty, unitPrice: best.price, total, supplier, hasPrice: true });
+  });
+
+  // Bac water — use the explicitly-picked product
+  if (window._sfBacProduct) {
+    const bw = window._sfBacProduct;
+    const bacQty = Math.max(1, parseInt(document.getElementById('sf-bac-vial-qty')?.value) || 1);
+    if (bw.price != null) {
+      const total = bw.price * bacQty;
+      grandTotal += total;
+      const supplier = bw.source === 'uk-peptides' ? 'UK Peptides'
+                     : bw.source === 'anglo-peptides' ? 'Anglo Peptides'
+                     : 'Manual';
+      supplierTotals[supplier] = (supplierTotals[supplier] || 0) + total;
+      lineItems.push({ name: bw.name, qty: bacQty, unitPrice: bw.price, total, supplier, hasPrice: true, isBac: true });
+    } else {
+      lineItems.push({ name: bw.name, qty: bacQty, unitPrice: null, total: null, supplier: '—', hasPrice: false, isBac: true });
+      allHavePrices = false;
+    }
+  }
+
+  if (!lineItems.length) return;
+
+  const fmt = (gbp) => sym + (gbp * rate).toFixed(rate >= 100 ? 0 : 2);
+  const itemsHtml = lineItems.map(it => `
+    <div class="needle-row">
+      <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(it.name)}${it.qty>1?(' × '+it.qty):''}</span>
+        <span style="font-size:9.5px;color:var(--text3)">${escHtml(it.supplier)}${it.hasPrice && it.qty>1?(' · '+fmt(it.unitPrice)+' each'):''}</span>
+      </span>
+      <strong style="font-family:'JetBrains Mono',monospace;color:${it.hasPrice?'var(--text)':'var(--text3)'}">${it.hasPrice ? fmt(it.total) : '—'}</strong>
+    </div>`).join('');
+
+  const supplierLines = Object.entries(supplierTotals).map(([s, gbp]) =>
+    `<div class="needle-row" style="font-size:11px"><span>${escHtml(s)}</span><span style="font-family:'JetBrains Mono',monospace">${fmt(gbp)}</span></div>`
+  ).join('');
+
+  const summaryEl = document.createElement('div');
+  summaryEl.id = 'sf-total-price-summary';
+  summaryEl.className = 'needle-summary';
+  summaryEl.innerHTML = `
+    <div class="needle-summary-title">💷 Total Price</div>
+    ${itemsHtml}
+    ${supplierLines ? `<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">${supplierLines}</div>` : ''}
+    <div class="needle-total" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+      <span>Total</span><span>${fmt(grandTotal)}${allHavePrices ? '' : ' <small style="color:var(--text3);font-weight:400">(partial)</small>'}</span>
+    </div>`;
+
+  // Insert after the needle summary so it sits just below the needle estimate.
+  const needleEl = document.getElementById('sf-needle-summary');
+  if (needleEl) {
+    needleEl.parentNode.insertBefore(summaryEl, needleEl.nextSibling);
+  } else {
+    const formActions = stackModal.querySelector('.form-actions');
+    if (formActions) formActions.parentNode.insertBefore(summaryEl, formActions);
+  }
 }
 
 function renderUrlRows() {
@@ -4352,10 +4645,22 @@ document.getElementById('stackModalSave').addEventListener('click', () => {
 
   const bacUrlAEl = document.querySelector('[data-url-field="bac.urlA"]');
   const bacUrlBEl = document.querySelector('[data-url-field="bac.urlB"]');
+  const bacPicked = window._sfBacProduct || null;
+  const supplierName = bacPicked
+    ? (bacPicked.source==='uk-peptides' ? 'UK Peptides' : bacPicked.source==='anglo-peptides' ? 'Anglo Peptides' : 'Manual')
+    : '';
   const bacWater = {
     qty: document.getElementById('sf-bac-qty').value.trim(),
-    retailerA: { name: '', url: bacUrlAEl?.value || '' },
+    // retailerA reflects the catalogue picker selection when present, otherwise the legacy URL fields.
+    retailerA: bacPicked
+      ? { name: supplierName, url: bacPicked.url || '' }
+      : { name: '', url: bacUrlAEl?.value || '' },
     retailerB: { name: '', url: bacUrlBEl?.value || '' },
+    // Persist the picked product so the form restores the same selection on edit.
+    product: bacPicked ? {
+      name: bacPicked.name, price: bacPicked.price, source: bacPicked.source,
+      url: bacPicked.url, stock: bacPicked.stock, capacity_mg: bacPicked.capacity_mg
+    } : null,
   };
 
   // Derive protocol length from days + some logic
@@ -6463,7 +6768,7 @@ function catRender() {
   if (!root) return;
 
   if (!list.length && catDynamic.length === 0 && manualProducts().length === 0) {
-    root.innerHTML = '<div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px;">Hit <strong style="color:var(--accent)">Refresh All</strong> to pull live prices.<br>Or <strong style="color:var(--accent)">+ Add a product manually</strong> to add your own product.</div>';
+    root.innerHTML = '<div style="text-align:center;padding:48px 24px;color:var(--text3);font-size:13px;">Hit <strong style="color:var(--accent)">Fetch latest prices</strong> to pull live prices.<br>Or <strong style="color:var(--accent)">+ Add a product manually</strong> to add your own product.</div>';
     return;
   }
   if (!list.length) {
@@ -6627,20 +6932,69 @@ function catRender() {
   });
 }
 
-// ── Handle worker data ──
-function catHandleWorkerData(data) {
-  catDynamic = data.products || [];
-  const ts = data.last_updated;
-  const el = document.getElementById('catLastUpdated');
-  if (el) {
-    if (ts) {
-      const ago = timeAgo(new Date(ts).getTime());
-      el.textContent = 'Updated ' + ago;
-      el.title = new Date(ts).toLocaleString('en-GB');
+// ── Fetch-latest-prices: rate limit + persisted timestamp ──
+const FETCH_COOLDOWN_MS = 5 * 60 * 1000;          // 5 minutes
+const FETCH_TS_KEY      = 'peptide-app-last-fetch'; // ms epoch of last successful fetch
+
+function getLastFetchTs() {
+  const v = parseInt(localStorage.getItem(FETCH_TS_KEY) || '0', 10);
+  return isNaN(v) ? 0 : v;
+}
+function setLastFetchTs(ts) {
+  try { localStorage.setItem(FETCH_TS_KEY, String(ts)); } catch(e) {}
+}
+function fmtCooldown(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+}
+function fmtFetchedAt(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  // e.g. "Last fetched: 14:32, 5 May 2026"
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return 'Last fetched: ' + time + ', ' + date;
+}
+
+let _refreshCooldownTimer = null;
+function updateRefreshButtonState() {
+  const btn = document.getElementById('catRefreshBtn');
+  const labelEl = document.getElementById('catRefreshBtnLabel');
+  const tsEl = document.getElementById('catLastUpdated');
+  if (!btn || !labelEl) return;
+  const last = getLastFetchTs();
+  if (tsEl) {
+    if (last) {
+      tsEl.textContent = fmtFetchedAt(last);
+      tsEl.title = new Date(last).toLocaleString('en-GB');
     } else {
-      el.textContent = '';
+      tsEl.textContent = '';
     }
   }
+  // If a refresh is currently in flight (button has 'spinning' class), don't override.
+  if (btn.classList.contains('spinning')) return;
+  const remaining = FETCH_COOLDOWN_MS - (Date.now() - last);
+  if (remaining > 0) {
+    btn.disabled = true;
+    btn.classList.add('cooldown');
+    labelEl.textContent = 'Wait ' + fmtCooldown(remaining);
+    if (!_refreshCooldownTimer) {
+      _refreshCooldownTimer = setInterval(updateRefreshButtonState, 1000);
+    }
+  } else {
+    btn.disabled = false;
+    btn.classList.remove('cooldown');
+    labelEl.textContent = 'Fetch latest prices';
+    if (_refreshCooldownTimer) { clearInterval(_refreshCooldownTimer); _refreshCooldownTimer = null; }
+  }
+}
+
+// ── Handle worker data ──
+// Note: this runs both on cached catalogue load AND on user-initiated refresh.
+// The cooldown timestamp is set in the click handler only — NOT here — so
+// app boot doesn't accidentally lock the user out of fetching.
+function catHandleWorkerData(data) {
+  catDynamic = data.products || [];
   catRender();
   // Auto-populate stacks with cheapest matching products now that catalogue is fresh
   if (typeof autoPopulateDefaultStacksFromCatalogue === 'function') {
@@ -6648,9 +7002,15 @@ function catHandleWorkerData(data) {
   }
 }
 
-// ── Refresh All (worker) ──
+// ── Fetch latest prices (worker) ──
 document.getElementById('catRefreshBtn').addEventListener('click', async function() {
   const btn = this;
+  // Hard guard — prevent fetch if cooldown not elapsed (defensive; UI already disables button)
+  const remaining = FETCH_COOLDOWN_MS - (Date.now() - getLastFetchTs());
+  if (remaining > 0) {
+    showToast('Please wait ' + fmtCooldown(remaining) + ' before fetching again');
+    return;
+  }
   btn.disabled = true;
   btn.classList.add('spinning');
 
@@ -6680,6 +7040,8 @@ document.getElementById('catRefreshBtn').addEventListener('click', async functio
   try {
     const data = await workerFetch('/api/refresh');
     catHandleWorkerData(data);
+    // Only stamp the cooldown after a successful user-initiated fetch.
+    setLastFetchTs(Date.now());
     showToast('✓ Catalogue refreshed — ' + (data.count||0) + ' products');
     statusEl.textContent = '✓ ' + (data.count||0) + ' products loaded';
     setTimeout(() => { statusEl.style.opacity = '0'; }, 3000);
@@ -6693,10 +7055,15 @@ document.getElementById('catRefreshBtn').addEventListener('click', async functio
     setTimeout(() => { statusEl.style.opacity = '0'; }, 5000);
   } finally {
     clearInterval(msgTimer);
-    btn.disabled = false;
     btn.classList.remove('spinning');
+    // Don't blindly re-enable: updateRefreshButtonState decides based on cooldown.
+    updateRefreshButtonState();
   }
 });
+
+// Initialise refresh button state on page load (handles cooldown still active
+// from a previous session — localStorage-persisted timestamp survives reload).
+updateRefreshButtonState();
 
 // ── Search / filter / sort ──
 document.getElementById('catSearch').addEventListener('input', function() {
@@ -7077,7 +7444,7 @@ function pbGroupByName(allProds) {
 function pbOpenPicker() {
   const allProds = typeof catAllProducts === 'function' ? catAllProducts() : [];
   if (!allProds.length) {
-    showToast('Catalogue is empty — go to Catalogue tab and hit Refresh All first');
+    showToast('Catalogue is empty — go to Catalogue tab and hit Fetch latest prices first');
     return;
   }
   pbPickerState = { step: 'search', query: '', selectedProduct: null, cart: [] };
