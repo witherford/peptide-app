@@ -1166,8 +1166,12 @@
       </button>
       <div class="guide-card-body" id="guide-body-beginners">
 
+        <div class="guide-tip-box" style="background:rgba(216,90,48,0.08);border-color:rgba(216,90,48,0.25);color:var(--text)">
+          <strong>📺 Watch first:</strong> If video is your preferred way to learn, head to the <strong>Video Resources</strong> section further down this Guides page. There are four curated walk-throughs of the peptide landscape — pair them with this written guide for the fastest onboarding.
+        </div>
+
         <!-- What are peptides -->
-        <div class="guide-section-title">What Are Peptides?</div>
+        <div class="guide-section-title" style="margin-top:14px">What Are Peptides?</div>
         <div class="guide-explainer">
           <p>Peptides are short chains of amino acids — the same building blocks that make up proteins. Your body produces thousands of peptides naturally; they act as signalling molecules, hormones, neurotransmitters, and growth factors. Insulin, GLP-1, and oxytocin are all peptides your body already makes.</p>
           <p>Research peptides are either identical to these natural compounds or slightly modified versions designed to be more stable, potent, or targeted. Because they are made of amino acids, they are broken down by the digestive system — which is why most must be injected rather than taken orally.</p>
@@ -1700,7 +1704,82 @@
       </div>
     </div>
 
-    <!-- ── Guide 6: Disclaimer ── -->
+    <!-- ── Guide 6: Video Resources ── -->
+    <div class="guide-card" id="guide-videos">
+      <button class="guide-card-header" data-guide="videos">
+        <div class="guide-card-icon" style="background:rgba(216,90,48,0.15);color:#D85A30">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        </div>
+        <div class="guide-card-info">
+          <div class="guide-card-title">Video Resources</div>
+          <div class="guide-card-desc">Curated YouTube videos covering peptide science, dosing and protocols</div>
+        </div>
+        <svg class="guide-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="guide-card-body" id="guide-body-videos">
+        <div class="guide-explainer">
+          <p>The videos below are linked for reference. They are not produced by this app and the views expressed are the creators' own. Watch them as a starting point, then cross-check against the Library and reference papers in this app before making any decisions about your own protocol.</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;margin-top:8px">
+
+          <!-- Huberman -->
+          <a href="https://www.youtube.com/watch?v=zU5EYw06wtw" target="_blank" rel="noopener"
+             style="display:flex;gap:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-decoration:none;color:inherit;align-items:flex-start;transition:border-color .15s">
+            <img src="https://i.ytimg.com/vi/zU5EYw06wtw/hqdefault.jpg" alt="" style="width:140px;height:80px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bg4)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">Benefits &amp; Risks of Peptide Therapeutics for Physical &amp; Mental Health</div>
+              <div style="font-size:10.5px;color:var(--text3);margin-bottom:5px">Andrew Huberman · Huberman Lab</div>
+              <div style="font-size:11.5px;color:var(--text2);line-height:1.5">A long-form, science-led overview of the peptide categories most discussed today — healing peptides (BPC-157, TB-500, GHK), GH secretagogues (Sermorelin, Ipamorelin, CJC-1295), MOTS-c, NAD-related compounds and more. Covers proposed mechanisms, evidence quality, dosing considerations and the safety risks that get glossed over in shorter coverage.</div>
+              <div style="font-size:10.5px;color:var(--blue);margin-top:5px">↗ Watch on YouTube</div>
+            </div>
+          </a>
+
+          <!-- Ryan Humiston — Science-Backed Peptides -->
+          <a href="https://www.youtube.com/watch?v=Cu9PVWM2fJo" target="_blank" rel="noopener"
+             style="display:flex;gap:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-decoration:none;color:inherit;align-items:flex-start;transition:border-color .15s">
+            <img src="https://i.ytimg.com/vi/Cu9PVWM2fJo/hqdefault.jpg" alt="" style="width:140px;height:80px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bg4)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">Science-Backed Peptides: More Muscle, Dream-Level Sleep, Laser Focus</div>
+              <div style="font-size:10.5px;color:var(--text3);margin-bottom:5px">Ryan Humiston</div>
+              <div style="font-size:11.5px;color:var(--text2);line-height:1.5">A practical fitness-channel walk-through of peptides grouped by use case — recovery and muscle (BPC-157, TB-500, IGF-1 LR3), sleep and circadian (DSIP, Epithalon) and cognitive performance (Selank, Semax). Faster paced than Huberman; useful as a quick orientation before going deeper.</div>
+              <div style="font-size:10.5px;color:var(--blue);margin-top:5px">↗ Watch on YouTube</div>
+            </div>
+          </a>
+
+          <!-- A Whey to Explain — Every Peptide in 10 Minutes -->
+          <a href="https://www.youtube.com/watch?v=OkpqEtFt8QA" target="_blank" rel="noopener"
+             style="display:flex;gap:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-decoration:none;color:inherit;align-items:flex-start;transition:border-color .15s">
+            <img src="https://i.ytimg.com/vi/OkpqEtFt8QA/hqdefault.jpg" alt="" style="width:140px;height:80px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bg4)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">Every Peptide &amp; Its Effects Explained in 10 Minutes</div>
+              <div style="font-size:10.5px;color:var(--text3);margin-bottom:5px">A Whey to Explain</div>
+              <div style="font-size:11.5px;color:var(--text2);line-height:1.5">A rapid index of the most discussed research peptides — one-liner mechanism and primary effect for each compound (BPC-157, TB-500, GHK-Cu, Ipamorelin, CJC-1295, MK-677, Tesamorelin, MOTS-c and more). Best used as a glossary while reading the Library page in this app.</div>
+              <div style="font-size:10.5px;color:var(--blue);margin-top:5px">↗ Watch on YouTube</div>
+            </div>
+          </a>
+
+          <!-- Ryan Humiston — These are a GAME CHANGER! -->
+          <a href="https://www.youtube.com/watch?v=Ng1oovuUygc" target="_blank" rel="noopener"
+             style="display:flex;gap:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-decoration:none;color:inherit;align-items:flex-start;transition:border-color .15s">
+            <img src="https://i.ytimg.com/vi/Ng1oovuUygc/hqdefault.jpg" alt="" style="width:140px;height:80px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bg4)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">These are a GAME CHANGER!</div>
+              <div style="font-size:10.5px;color:var(--text3);margin-bottom:5px">Ryan Humiston</div>
+              <div style="font-size:11.5px;color:var(--text2);line-height:1.5">A more personal take from the same channel covering peptides the creator credits with the biggest noticeable change in his own training and recovery. Useful for hearing real-world subjective effects, but treat anecdote with the usual caution and cross-check claims against the Library entries.</div>
+              <div style="font-size:10.5px;color:var(--blue);margin-top:5px">↗ Watch on YouTube</div>
+            </div>
+          </a>
+
+        </div>
+
+        <div class="guide-tip-box" style="margin-top:14px">
+          <strong>📺 Reminder:</strong> External videos can simplify the science to the point of being misleading. Use the <strong>Library</strong> page in this app to read the supporting research papers for any peptide that catches your interest before adding it to a protocol.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Guide 7: Disclaimer ── -->
     <div class="guide-card" id="guide-disclaimer">
       <button class="guide-card-header" data-guide="disclaimer">
         <div class="guide-card-icon" style="background:rgba(216,90,48,0.15);color:#D85A30">
@@ -9318,7 +9397,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.11.0';
+  const APP_VERSION = '1.12.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
