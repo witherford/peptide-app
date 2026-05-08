@@ -2893,11 +2893,14 @@ function buildStackBodyHtml(stack) {
     </tr>`;
   }).join('');
 
-  // Bac water row — use actual catalogue product name
+  // Bac water row — prefer the product the USER explicitly picked from the
+  // catalogue (stored on stack.bacWater.product). Only fall back to the
+  // cheapest catalogue match if no selection has been made.
   const bacProdsBody = allProdsBody.filter(p=>/bac|bacterio|water/i.test(p.name));
-  const bestBacBody = bacProdsBody.length
+  const cheapestBacBody = bacProdsBody.length
     ? bacProdsBody.sort((a,b)=>(a.price??Infinity)-(b.price??Infinity))[0]
     : null;
+  const bestBacBody = stack.bacWater?.product || cheapestBacBody;
   const bacProductName = bestBacBody?.name
     ? bestBacBody.name.replace(/[\s\-–—]+\d+(?:\.\d+)?\s*(mcg|mg|iu|ml)$/i,'').trim()
     : 'Bacteriostatic Water';
@@ -3018,7 +3021,9 @@ function buildStackSummaryPanel(stack) {
   let bacLine = '';
   if (stack.bacWater?.qty) {
     const bacProds = allProds.filter(cp => /bac|bacterio|water/i.test(cp.name));
-    const bestBac = bacProds.length ? bacProds.reduce((a,b) => (a.price??Infinity) <= (b.price??Infinity) ? a : b) : null;
+    const cheapestBac = bacProds.length ? bacProds.reduce((a,b) => (a.price??Infinity) <= (b.price??Infinity) ? a : b) : null;
+    // Prefer the product the user explicitly picked; fall back to cheapest in catalogue.
+    const bestBac = stack.bacWater.product || cheapestBac;
     const mBV = (stack.bacWater.qty||'').match(/^(\d+)\s*(?:[×xX*]|vial)/);
     const bvq = mBV ? parseInt(mBV[1]) : 1;
     if (bestBac?.price != null) {
@@ -3954,6 +3959,7 @@ function openStackModal(stack, forceCatId) {
 
   // Restore previously-picked bacteriostatic water (catalogue picker selection)
   window._sfBacProduct = stack?.bacWater?.product || null;
+  window._sfBacUserPicked = !!stack?.bacWater?.userPicked;
   renderBacWaterSelected();
 
   renderPeptideRows();
@@ -4360,6 +4366,9 @@ function renderBacWaterSelected() {
   });
   document.getElementById('sf-bac-remove').addEventListener('click', () => {
     window._sfBacProduct = null;
+    // Clearing the picked product also clears the user-picked lock so the
+    // auto-populate routine is allowed to suggest a fresh default.
+    window._sfBacUserPicked = false;
     document.getElementById('sf-bac-qty').value = '';
     document.getElementById('sf-bac-vial-qty').value = '1';
     renderBacWaterSelected();
@@ -4415,6 +4424,10 @@ function openBacWaterPicker() {
       const prod = bacProds.find(p => p.name === name);
       if (!prod) return;
       window._sfBacProduct = prod;
+      // Mark this stack's bac water as explicitly user-picked so the
+      // auto-populate routine on next app load doesn't overwrite it with
+      // a "lower total cost" alternative the user didn't choose.
+      window._sfBacUserPicked = true;
       document.getElementById('sf-bac-vial-qty').value = '1';
       syncBacQtyFromProduct();
       renderBacWaterSelected();
@@ -5459,6 +5472,9 @@ document.getElementById('stackModalSave').addEventListener('click', () => {
       name: bacPicked.name, price: bacPicked.price, source: bacPicked.source,
       url: bacPicked.url, stock: bacPicked.stock, capacity_mg: bacPicked.capacity_mg
     } : null,
+    // userPicked locks the selection — prevents autoPopulateDefaultStacksFromCatalogue
+    // from silently swapping the user's choice for a "lower total cost" alternative.
+    userPicked: !!window._sfBacUserPicked,
   };
 
   // Derive protocol length from days + some logic
@@ -6776,6 +6792,130 @@ const PEPTIDE_LIBRARY = [
     refs: [
       { label: 'Slifer et al. (2021) — Larazotide acetate: pharmacological peptide approach to tight junction regulation (Am J Physiol Gastrointest Liver Physiol)', url: 'https://pubmed.ncbi.nlm.nih.gov/33881350/' },
       { label: 'Khaleghi et al. (2016) — Tight junction regulation in celiac disease, focus on larazotide acetate (Therap Adv Gastroenterol)', url: 'https://pubmed.ncbi.nlm.nih.gov/26770266/' },
+    ],
+  },
+
+  // ── Cognitive & Nootropic (new category, v1.13.0) ──
+  {
+    name: 'FGL', aka: 'FG Loop · NCAM-derived synthetic peptide · Fibroblast Growth Loop',
+    type: 'Cognitive & Nootropic', typeColor: '#4DB6E2',
+    tags: [
+      {label:'Neuroplasticity', bg:'rgba(77,182,226,0.15)', color:'#4DB6E2'},
+      {label:'Memory', bg:'rgba(77,182,226,0.1)', color:'#4DB6E2'},
+      {label:'Stroke recovery', bg:'rgba(77,182,226,0.08)', color:'#4DB6E2'},
+    ],
+    description: 'FGL (FG-loop) is a 15-amino-acid synthetic peptide derived from a fibronectin-type-III module of the Neural Cell Adhesion Molecule (NCAM). It mimics the NCAM-FGFR1 binding site and triggers FGFR1 signalling, driving neurite outgrowth, synaptic plasticity, and survival of new neurons. Preclinical work shows it reverses spatial-learning deficits in neonatal models and mobilises endogenous neural stem cells after stroke. Investigational in Alzheimer\'s and post-stroke cognitive recovery.',
+    pros: [
+      'Direct FGFR1 agonism — well-characterised pro-cognitive mechanism',
+      'Reverses spatial-learning / memory deficits in multiple preclinical models',
+      'Mobilises endogenous neural stem cells after experimental stroke',
+      'Crosses the blood–brain barrier (small enough to penetrate)',
+      'No major safety signals reported in animal pharmacology',
+    ],
+    cons: [
+      'No published human clinical trials — all data is preclinical',
+      'Sourcing as a research peptide is very limited; purity hard to verify',
+      'No established human dose; rodent doses don\'t scale linearly',
+      'FGFR1 signalling is broadly pro-mitogenic — long-term oncological safety unstudied',
+      'Effects are subtle and difficult to self-measure without cognitive testing',
+    ],
+    dosage: { typical: 'No established human dose — research only', frequency: 'Animal protocols use SC, 1–2× weekly', route: 'SC injection (research)', cycle: 'Undefined — no approved protocol' },
+    refs: [
+      { label: 'Secher et al. (2009) — FGL reverses spatial learning/memory deficits (Behav Brain Res)', url: 'https://pubmed.ncbi.nlm.nih.gov/19133297/' },
+      { label: 'Klein et al. (2016) — FGL mobilises neural stem cells after stroke (J Neuroimmune Pharmacol)', url: 'https://pubmed.ncbi.nlm.nih.gov/27352075/' },
+    ],
+  },
+
+  // ── Anti-Microbial / Wound (new category, v1.13.0) ──
+  {
+    name: 'Magainin 2', aka: 'Frog-skin antimicrobial peptide · MAG2',
+    type: 'Anti-Microbial', typeColor: '#98C262',
+    tags: [
+      {label:'Broad-spectrum', bg:'rgba(152,194,98,0.15)', color:'#98C262'},
+      {label:'Membrane-disrupting', bg:'rgba(152,194,98,0.1)', color:'#98C262'},
+      {label:'Topical', bg:'rgba(152,194,98,0.08)', color:'#98C262'},
+    ],
+    description: 'Magainin 2 is a 23-amino-acid cationic α-helical peptide originally isolated from the skin of the African clawed frog (Xenopus laevis). It permeabilises bacterial cell membranes by selectively binding to anionic lipids and forming toroidal pores, disrupting the membrane potential and killing the cell. Active against Gram-positive and Gram-negative bacteria, fungi, and some enveloped viruses. Synthetic analogues (e.g. pexiganan) reached Phase 3 trials for diabetic foot infection but failed to demonstrate superiority over standard topical antibiotics.',
+    pros: [
+      'Mechanism (membrane disruption) makes resistance development difficult',
+      'Active against MDR organisms including MRSA in vitro',
+      'Selective for bacterial vs mammalian membranes (anionic lipid specificity)',
+      'Topical delivery feasible — skin/wound use avoids systemic toxicity',
+      'Inspired a large family of clinical AMPs (pexiganan, MSI-78, etc.)',
+    ],
+    cons: [
+      'Pexiganan (MSI-78) failed Phase 3 for diabetic foot ulcer — efficacy modest in clinic',
+      'Susceptible to proteolytic degradation in vivo — short half-life',
+      'Cytotoxic to mammalian cells at higher doses; therapeutic window is narrow',
+      'No FDA-approved product yet despite 30 years of development',
+      'Manufacturing cost remains higher than small-molecule antibiotics',
+    ],
+    dosage: { typical: 'Topical formulations 0.1–1% in research; no approved human dose', frequency: 'Twice daily (research protocols)', route: 'Topical (skin / wound)', cycle: 'Until lesion resolves; not used systemically' },
+    refs: [
+      { label: 'Hirano et al. (2021) — Magainin 2 stapled peptide development (Molecules)', url: 'https://pubmed.ncbi.nlm.nih.gov/33466998/' },
+      { label: 'Billah et al. (2023) — Mode of action of magainin 2 on lipid bilayers (BBA Biomembranes)', url: 'https://pubmed.ncbi.nlm.nih.gov/36567034/' },
+    ],
+  },
+
+  // ── Immune & Anti-Inflammatory (new category, v1.13.0) ──
+  {
+    name: 'PEPITEM', aka: 'Peptide Inhibitor of Trans-Endothelial Migration · 14-mer adiponectin-induced',
+    type: 'Immune & Anti-Inflammatory', typeColor: '#ECB867',
+    tags: [
+      {label:'T-cell migration', bg:'rgba(236,184,103,0.15)', color:'#ECB867'},
+      {label:'Autoimmune', bg:'rgba(236,184,103,0.1)', color:'#ECB867'},
+      {label:'Endothelial', bg:'rgba(236,184,103,0.08)', color:'#ECB867'},
+    ],
+    description: 'PEPITEM is a 14-amino-acid peptide derived from a B-cell secreted factor downstream of adiponectin signalling. It binds the cadherin-15 receptor on endothelial cells, inducing release of sphingosine-1-phosphate from the endothelium that selectively blocks T-cell trans-endothelial migration into inflamed tissue. The pathway is impaired in obesity and ageing, contributing to chronic low-grade inflammation. Investigational in lupus nephritis, multiple sclerosis (EAE), inflammatory arthritis and atherosclerosis.',
+    pros: [
+      'Targets a non-redundant choke-point: T-cell tissue infiltration rather than cytokine signalling',
+      'Selective — does not broadly suppress immune function as steroids/biologics do',
+      'Active in mouse models of lupus, MS (EAE), arthritis and obesity-driven inflammation',
+      'Endogenous peptide — pathway is part of normal physiology',
+      'Could complement existing biologics in autoimmune polypharmacy',
+    ],
+    cons: [
+      'No human clinical trials yet — all efficacy data is preclinical (rodent)',
+      'Half-life and pharmacokinetics in humans are unknown',
+      'Synthetic peptide manufacturing keeps cost-of-goods high',
+      'Cadherin-15 receptor distribution may produce off-target effects in development tissues',
+      'Sourcing as a research peptide is currently almost impossible at therapeutic purity',
+    ],
+    dosage: { typical: 'No established human dose; murine studies use 0.5–5 mg/kg IP', frequency: 'Daily (animal protocols)', route: 'IP / SC (research)', cycle: 'Undefined — no clinical protocol' },
+    refs: [
+      { label: 'Matsubara et al. (2020) — PEPITEM/Cadherin 15 inhibits T-cell infiltration in lupus nephritis (J Immunol)', url: 'https://pubmed.ncbi.nlm.nih.gov/32169847/' },
+      { label: 'Alassiri et al. (2023) — PEPITEM ameliorates EAE multiple sclerosis model (Int J Mol Sci)', url: 'https://pubmed.ncbi.nlm.nih.gov/38139072/' },
+    ],
+  },
+
+  // ── Bone & Joint (new category, v1.13.0) ──
+  {
+    name: 'Teriparatide', aka: 'PTH 1-34 · Forteo® · recombinant human parathyroid hormone',
+    type: 'Bone & Joint', typeColor: '#B79378',
+    fdaApproved: true, fdaNote: 'Osteoporosis (postmenopausal women, men, glucocorticoid-induced)',
+    tags: [
+      {label:'Anabolic bone', bg:'rgba(183,147,120,0.15)', color:'#B79378'},
+      {label:'FDA-approved', bg:'rgba(183,147,120,0.1)', color:'#B79378'},
+      {label:'Fracture risk', bg:'rgba(183,147,120,0.08)', color:'#B79378'},
+    ],
+    description: 'Teriparatide is the recombinant N-terminal 1–34 fragment of human parathyroid hormone, the only widely-used anabolic (bone-forming) osteoporosis drug. Continuous PTH exposure causes bone resorption, but pulsatile daily SC injection paradoxically stimulates osteoblast activity and net bone formation — a window discovered by Neer and colleagues. The pivotal NEJM trial in 2001 showed roughly 65% reduction in vertebral fractures vs placebo over 18–21 months. Approved by the FDA in 2002 for severe osteoporosis when antiresorptive drugs (bisphosphonates) are insufficient.',
+    pros: [
+      'Only true anabolic osteoporosis therapy in routine use — adds new bone, not just preserves it',
+      'Strong fracture-reduction evidence: ~65% drop in vertebral fractures, ~50% non-vertebral',
+      'Improves trabecular architecture on micro-CT, not just BMD',
+      'Useful as off-label adjunct in slow-healing fractures and severe glucocorticoid-induced osteoporosis',
+      'Now off-patent — biosimilars (Forsteo, Movymia, Bonsity) have lowered cost substantially',
+    ],
+    cons: [
+      'Requires daily SC injection — adherence challenging vs annual zoledronate',
+      'Treatment course is capped at 24 months lifetime due to historical osteosarcoma signal in rats (boxed warning, since downgraded)',
+      'Expensive even with biosimilars vs generic alendronate',
+      'Hypercalcaemia, dizziness, leg cramps — manageable but common',
+      'Bone gains lost without follow-on antiresorptive after the 24-month course',
+    ],
+    dosage: { typical: '20 mcg/day SC', frequency: 'Once daily', route: 'SC injection (thigh / abdomen)', cycle: '18–24 months total (lifetime cap), then transition to bisphosphonate' },
+    refs: [
+      { label: 'Neer et al. (2001) — Landmark teriparatide fracture trial in postmenopausal osteoporosis (NEJM)', url: 'https://pubmed.ncbi.nlm.nih.gov/11346808/' },
     ],
   },
 ];
@@ -9174,7 +9314,10 @@ function autoPopulateDefaultStacksFromCatalogue() {
     // (Previously we just picked the cheapest unit-priced product, which often
     // resulted in the qty label saying "1 × 10ml" while the picked product was
     // actually a 3ml vial — a confusing mismatch.)
-    if (stack.bacWater !== undefined) {
+    if (stack.bacWater !== undefined && !stack.bacWater.userPicked) {
+      // Skip auto-populate if the user has explicitly picked a bac water
+      // product via the catalogue picker — their selection is the source of
+      // truth and should never be silently overridden by the cost optimiser.
       const bacProds = allProds.filter(cp => /bac|bacterio|water/i.test(cp.name));
       const totalPeptideVials = stack.peptides.reduce((s, p) => s + (p.vialQty || 1), 0);
       const mlPerPeptideVial = stack.waterPerVial || 2;
@@ -9403,7 +9546,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.12.1';
+  const APP_VERSION = '1.13.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
