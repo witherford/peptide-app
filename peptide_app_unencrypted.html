@@ -2490,8 +2490,11 @@ function buildStackCard(stack) {
   if (wmH) totalWeeksH = Math.max(1, Math.min(Math.ceil(parseFloat(wmH[1])), 52));
   else if (dmH) totalWeeksH = Math.max(1, Math.min(Math.ceil(parseFloat(dmH[1])/7), 52));
   else if (mmH) totalWeeksH = Math.max(1, Math.min(Math.ceil(parseFloat(mmH[1]) * 4.33), 52));
-  let totalNeedlesH = 0;
+  // Find the per-week peak (highest-injection week), then totalNeedles =
+  // peak × weeks so the math is consistent with the in-modal needle estimate.
+  let perWeekPeakH = 0;
   for (let w = 0; w < totalWeeksH; w++) {
+    let weekCount = 0;
     for (let d = 0; d < 7; d++) {
       const inj = stack.peptides.filter(p => {
         const wd = stack.weekDays?.[p.id]?.[w];
@@ -2510,9 +2513,11 @@ function buildStackCard(stack) {
         });
         groupCount++;
       });
-      totalNeedlesH += groupCount;
+      weekCount += groupCount;
     }
+    if (weekCount > perWeekPeakH) perWeekPeakH = weekCount;
   }
+  let totalNeedlesH = perWeekPeakH * totalWeeksH;
   if (!totalNeedlesH) totalNeedlesH = null;
   const needleBadge = totalNeedlesH
     ? `<span style="font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:1px 8px">💉 ${totalNeedlesH} needles</span>`
@@ -3070,8 +3075,11 @@ function buildStackSummaryPanel(stack) {
   else if (dm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1])/7), 52));
   else if (mm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52));
 
-  let totalNeedles = 0;
+  // Find the per-week peak (busiest week), then total = peak × weeks so the
+  // displayed math is consistent: "X / week × N weeks = Y total".
+  let perWeekPeak = 0;
   for (let w = 0; w < totalWeeks; w++) {
+    let weekCount = 0;
     for (let d = 0; d < 7; d++) {
       const inj = stack.peptides.filter(p => {
         const wd = stack.weekDays?.[p.id]?.[w];
@@ -3090,9 +3098,11 @@ function buildStackSummaryPanel(stack) {
         });
         groupCount++;
       });
-      totalNeedles += groupCount;
+      weekCount += groupCount;
     }
+    if (weekCount > perWeekPeak) perWeekPeak = weekCount;
   }
+  let totalNeedles = perWeekPeak * totalWeeks;
   if (!totalNeedles) totalNeedles = null;
 
   // Water requirement check — total ml needed = (peptide vial count) × (ml per peptide vial)
@@ -5256,15 +5266,18 @@ function updateNeedleSummary() {
     perWeekCounts.push(weekCount);
   }
 
-  const estTotal = totalNeedles;
   // Per-week display: always a single integer — the highest-injection week
   // in the protocol. Picking the max means the user buys enough needles to
-  // cover their busiest week. The total below this row reflects the actual
-  // sum across all weeks.
-  // The "Stacking (Shared Needle)" checkbox influences both numbers naturally:
-  // toggling it on clears stackWith on every peptide, which causes the calc
-  // to count groups separately on subsequent re-runs.
+  // cover their busiest week.
+  // Total: derived as perWeek × weeks so the simple mental math
+  // "X needles/week × N weeks = Y total" always holds. This intentionally
+  // overstates slightly when the schedule has lighter weeks — needles are
+  // cheap and the buffer prevents running out mid-protocol.
+  // The "Stacking (Shared Needle)" checkbox influences both numbers
+  // naturally: toggling it on clears stackWith on every peptide, which
+  // causes the calc to count groups separately on subsequent re-runs.
   const perWeekDisplay = perWeekCounts.length ? Math.max(...perWeekCounts) : 0;
+  const estTotal = perWeekDisplay * weeks;
 
   const _existNeedle = document.getElementById('sf-needle-summary');
   if (_existNeedle) _existNeedle.remove();
@@ -9571,7 +9584,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.13.2';
+  const APP_VERSION = '1.13.3';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;

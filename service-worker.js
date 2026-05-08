@@ -7,7 +7,7 @@
 //   - Scraper API (peptide-app-scraper.workers.dev): always pass through, never cached.
 
 // Bump on every release so the old cache is evicted on activate.
-const CACHE_NAME = 'peptide-app-v1.13.2';
+const CACHE_NAME = 'peptide-app-v1.13.3';
 const SCRAPER_HOST = 'peptide-app-scraper.witherford-m.workers.dev';
 
 const PRECACHE_URLS = [
