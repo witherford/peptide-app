@@ -5257,19 +5257,14 @@ function updateNeedleSummary() {
   }
 
   const estTotal = totalNeedles;
-  // If every week has the same needle count, show that integer.
-  // Otherwise show a min–max range so users don't think we're claiming a
-  // fractional number of injections per week (the prior "average" display
-  // confused people, e.g. it would say 7.5/week when reality was 5 in some
-  // weeks and 10 in others).
-  let perWeekDisplay;
-  if (!perWeekCounts.length) {
-    perWeekDisplay = '0';
-  } else {
-    const minW = Math.min(...perWeekCounts);
-    const maxW = Math.max(...perWeekCounts);
-    perWeekDisplay = (minW === maxW) ? String(minW) : `${minW}–${maxW}`;
-  }
+  // Per-week display: always a single integer — the highest-injection week
+  // in the protocol. Picking the max means the user buys enough needles to
+  // cover their busiest week. The total below this row reflects the actual
+  // sum across all weeks.
+  // The "Stacking (Shared Needle)" checkbox influences both numbers naturally:
+  // toggling it on clears stackWith on every peptide, which causes the calc
+  // to count groups separately on subsequent re-runs.
+  const perWeekDisplay = perWeekCounts.length ? Math.max(...perWeekCounts) : 0;
 
   const _existNeedle = document.getElementById('sf-needle-summary');
   if (_existNeedle) _existNeedle.remove();
@@ -9576,7 +9571,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.13.1';
+  const APP_VERSION = '1.13.2';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
