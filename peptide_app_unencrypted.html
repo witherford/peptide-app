@@ -2474,7 +2474,7 @@ function buildStackCard(stack) {
   if (stack.bacWater?.qty) {
     const bacP = allProdsH.filter(p=>/bac|bacterio|water/i.test(p.name));
     const bestBacH = bacP.length ? bacP.reduce((a,b)=>(a.price??Infinity)<=(b.price??Infinity)?a:b) : null;
-    const mBH = (stack.bacWater.qty||'').match(/^(\d+)\s*[×x]/);
+    const mBH = (stack.bacWater.qty||'').match(/^(\d+)\s*(?:[×xX*]|vial)/);
     if (bestBacH?.price!=null) { headerPrice += bestBacH.price*(mBH?parseInt(mBH[1]):1)*rate0; hasPriceH=true; }
   }
   const needlesPerWeekH = (() => {
@@ -2845,7 +2845,7 @@ function buildStackBodyHtml(stack) {
     const matches = allProdsBody.filter(cp => {
       if (/bac|bacterio|water/i.test(cp.name)) return false;
       const cpL = cp.name.toLowerCase().replace(/\s+/g,'');
-      const cpBase = cpL.replace(/[\s\-]+\d+(?:\.\d+)?(mcg|mg|iu|ml)$/,'').replace(/\s+/g,'');
+      const cpBase = cpL.replace(/[\s\-–—]+\d+(?:\.\d+)?\s*(mcg|mg|iu|ml)$/,'').replace(/\s+/g,'');
       return cpBase.includes(nameL) || nameL.includes(cpBase) || cpL.includes(nameL);
     });
     if (!matches.length) return { price: null, source: '', url: '' };
@@ -2899,10 +2899,13 @@ function buildStackBodyHtml(stack) {
     ? bacProdsBody.sort((a,b)=>(a.price??Infinity)-(b.price??Infinity))[0]
     : null;
   const bacProductName = bestBacBody?.name
-    ? bestBacBody.name.replace(/[\s\-]+\d+(?:\.\d+)?\s*(ml|mg)$/i,'').trim()
+    ? bestBacBody.name.replace(/[\s\-–—]+\d+(?:\.\d+)?\s*(mcg|mg|iu|ml)$/i,'').trim()
     : 'Bacteriostatic Water';
-  const mBacVials = (stack.bacWater?.qty||'').match(/^(\d+)\s*[×x]\s*(.+)/);
-  const bacVialCount = mBacVials ? parseInt(mBacVials[1]) : 1;
+  // Accept the user-entered qty whether they wrote it as "2 × 10ml", "2x10ml",
+  // "2 * 10ml" or just a leading count like "2 vials". Falls back to 1.
+  const _bacQtyStr = stack.bacWater?.qty || '';
+  const mBacVials = _bacQtyStr.match(/^(\d+)\s*(?:[×xX*]|vial)/);
+  const bacVialCount = mBacVials ? Math.max(1, parseInt(mBacVials[1])) : 1;
   const bacQtyDisp = stack.bacWater?.qty || '—';
   const bacPriceCell = bestBacBody?.price != null
     ? catPriceHtml(bestBacBody.price, bacVialCount)
@@ -3016,7 +3019,7 @@ function buildStackSummaryPanel(stack) {
   if (stack.bacWater?.qty) {
     const bacProds = allProds.filter(cp => /bac|bacterio|water/i.test(cp.name));
     const bestBac = bacProds.length ? bacProds.reduce((a,b) => (a.price??Infinity) <= (b.price??Infinity) ? a : b) : null;
-    const mBV = (stack.bacWater.qty||'').match(/^(\d+)\s*[×x]/);
+    const mBV = (stack.bacWater.qty||'').match(/^(\d+)\s*(?:[×xX*]|vial)/);
     const bvq = mBV ? parseInt(mBV[1]) : 1;
     if (bestBac?.price != null) {
       const bacTotal = bestBac.price * rate * bvq;
@@ -3154,7 +3157,7 @@ function buildGrandTotalRowFromCatalogue(stack, allProds) {
   if (stack.bacWater?.qty) {
     const bacP = allProds.filter(p=>/bac|bacterio|water/i.test(p.name));
     const bestBac = bacP.length ? bacP.sort((a,b)=>(a.price??Infinity)-(b.price??Infinity))[0] : null;
-    const mBV = (stack.bacWater.qty||'').match(/^(\d+)\s*[×x]/);
+    const mBV = (stack.bacWater.qty||'').match(/^(\d+)\s*(?:[×xX*]|vial)/);
     if (bestBac?.price != null) { bestTotal += bestBac.price * (mBV ? parseInt(mBV[1]) : 1); hasBest = true; }
   }
 
@@ -3212,7 +3215,9 @@ function peptideAllocatedMg(p, stack) {
     if (isNaN(n) || n <= 0) return 0;
     if (unit === 'mcg') return n / 1000;
     if (unit === 'mg')  return n;
-    return n / 1000; // default mcg
+    // 'ml', 'iu', 'units' etc. need extra info to convert to mg; treat as 0
+    // rather than silently mis-converting at 1000:1 like an mcg value.
+    return 0;
   }
 
   let total = 0;
@@ -3515,12 +3520,13 @@ function wireScheduleGrid(card, stack) {
   }
 
   // ── Capacity helpers ──
+  // Delegate to the global peptideTotalMg so the schedule grid's
+  // capacity-exceeded check uses the same fuzzy stem+mg fallback as the
+  // homepage card. (Previously these two helpers diverged: the grid would
+  // return null where the homepage card resolved a vial size, so over-allocation
+  // warnings silently failed to fire for renamed catalogue products.)
   function getPeptideTotalMg(p) {
-    const vialQty = p.vialQty || 1;
-    const catProd = (typeof catAllProducts === 'function') ? catBestForPeptide(catAllProducts(), p.name) : null;
-    const vialMg = catProd?.capacity_mg || null;
-    if (vialMg == null) return null;
-    return vialMg * vialQty;
+    return (typeof peptideTotalMg === 'function') ? peptideTotalMg(p) : null;
   }
 
   function toMg(val, unit) {
@@ -3528,7 +3534,8 @@ function wireScheduleGrid(card, stack) {
     if (isNaN(n) || n <= 0) return 0;
     if (unit === 'mcg') return n / 1000;
     if (unit === 'mg') return n;
-    return n / 1000;
+    // Other units (ml, iu, …) need extra info — treat as 0 rather than mis-convert.
+    return 0;
   }
 
   function getAllocatedMgExcluding(st, peptideId, excludeWeek, excludeDay) {
@@ -4443,15 +4450,6 @@ function pbToggleAllocateMode(pepId) {
   if (!wasOn) window._pbAllocateMode[pepId] = true;
 }
 
-// Convert a "display" dose number (in the peptide's chosen doseUnit) to a
-// total in the same unit, after adding `addMcg` micrograms.
-function pbAddMcgToDose(currentValueInUnit, doseUnit, addMcg) {
-  const cur = parseFloat(currentValueInUnit) || 0;
-  if (doseUnit === 'mg') return cur + (addMcg / 1000);
-  // default: mcg
-  return cur + addMcg;
-}
-
 // Round the dose to a sensible precision for the unit — avoids 0.30000000000004 etc.
 function pbRoundDose(val, doseUnit) {
   if (doseUnit === 'mg') return Math.round(val * 1000) / 1000;
@@ -4488,12 +4486,15 @@ function pbWriteDayDose(stack, peptide, week, day, newDose) {
 }
 
 // Convert a dose value (in some unit) to mg for capacity arithmetic.
+// Returns 0 for unsupported units (ml, iu, units, …) — those need extra
+// info (concentration / activity factor) so silently dividing by 1000
+// would mis-state capacity by orders of magnitude.
 function pbDoseInMg(val, unit) {
   const n = parseFloat(val);
   if (isNaN(n) || n <= 0) return 0;
   if (unit === 'mg') return n;
   if (unit === 'mcg') return n / 1000;
-  return n / 1000;
+  return 0;
 }
 
 // Open the dose popover for one day. Lets the user type a custom dose,
@@ -7170,7 +7171,7 @@ document.querySelectorAll('.tab').forEach(tab => {
         .then(data => catHandleData(data))
         .catch(() => {
           // Offline or local file — catalogue will show manual products only.
-          // User can hit Refresh All when online.
+          // User can hit "Fetch latest prices" when online.
           catRender();
         });
     }
@@ -7214,29 +7215,34 @@ function showToast(msg) {
 }
 
 // ── PWA ──
+// Null-guarded so the install / offline UX still degrades gracefully if
+// either element is removed from the markup.
 let deferredPrompt;
 const installBtn = document.getElementById('installBtn');
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; installBtn.classList.add('visible'); });
-installBtn.addEventListener('click', async () => {
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn?.classList.add('visible');
+});
+installBtn?.addEventListener('click', async () => {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
   const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === 'accepted') installBtn.classList.remove('visible');
+  if (outcome === 'accepted') installBtn?.classList.remove('visible');
   deferredPrompt = null;
 });
-window.addEventListener('appinstalled', () => installBtn.classList.remove('visible'));
+window.addEventListener('appinstalled', () => installBtn?.classList.remove('visible'));
 
 // ── Offline ──
 const banner = document.getElementById('offlineBanner');
-function updateOnline() { banner.classList.toggle('visible', !navigator.onLine); }
+function updateOnline() { banner?.classList.toggle('visible', !navigator.onLine); }
 window.addEventListener('online', updateOnline);
 window.addEventListener('offline', updateOnline);
 updateOnline();
 
-// ── SW ──
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
+// Service worker is registered in a single block at the end of the file
+// (looks for 'service-worker.js'). The earlier 'sw.js' registration here
+// pointed at a file that never existed and has been removed.
 
 
 // ════════════════════════════════════════════════════════════
@@ -7326,7 +7332,7 @@ function catMatchLibrary(productName) {
 function buildCatProductCardHtml(p) {
   const sym = currencySymbol(), rate = fxRate();
   const cap = p.capacity_mg ? ' · ' + p.capacity_mg + 'mg' : '';
-  const displayName = p.capacity_mg ? p.name.replace(/[\s\-\u2013\u2014]+\d+(?:\.\d+)?\s*mg$/i, '').trim() : p.name;
+  const displayName = p.capacity_mg ? p.name.replace(/[\s\-\u2013\u2014]+\d+(?:\.\d+)?\s*(mcg|mg|iu|ml)$/i, '').trim() : p.name;
   const priceNum = p.price != null ? p.price * rate : null;
   const priceDisp = priceNum != null ? sym + priceNum.toFixed(rate>=100?0:2) : '—';
   let sourceBadge;
@@ -9072,7 +9078,7 @@ workerFetch('/api/catalogue')
     autoPopulateDefaultStacksFromCatalogue();
   })
   .catch(() => {
-    // Offline or local file with no network — silent, user can hit Refresh All
+    // Offline or local file with no network — silent, user can hit "Fetch latest prices"
   });
 
 // ════════════════════════════════════════════════════════════
@@ -9397,7 +9403,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.12.0';
+  const APP_VERSION = '1.12.1';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
