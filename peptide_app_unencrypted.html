@@ -2477,29 +2477,43 @@ function buildStackCard(stack) {
     const mBH = (stack.bacWater.qty||'').match(/^(\d+)\s*(?:[×xX*]|vial)/);
     if (bestBacH?.price!=null) { headerPrice += bestBacH.price*(mBH?parseInt(mBH[1]):1)*rate0; hasPriceH=true; }
   }
-  const needlesPerWeekH = (() => {
-    let n=0;
-    for(let d=0;d<7;d++){
-      const inj=stack.peptides.filter(p=>(p.days||[]).includes(d));
-      if(!inj.length) continue;
-      const placed=new Set();
-      inj.forEach(p=>{if(placed.has(p.id))return;placed.add(p.id);(p.stackWith||[]).forEach(sid=>{if(inj.find(op=>op.id===sid))placed.add(sid);});n++;});
-    }
-    return n;
-  })();
   const priceBadge = hasPriceH
     ? `<span style="font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--green);background:var(--green-dim);border:1px solid rgba(93,202,165,0.2);border-radius:20px;padding:1px 8px">${sym0}${headerPrice.toFixed(rate0>=100?0:2)}</span>`
     : '';
 
-  // Total needles for the whole protocol (not per week)
+  // Total needles for the whole protocol — walk every (week, day) pair and
+  // honour per-week schedule overrides, matching the in-modal needle calc.
   const wmH = (stack.length||'').match(/(\d+(?:\.\d+)?)\s*week/i);
   const dmH = (stack.length||'').match(/(\d+(?:\.\d+)?)\s*day/i);
   const mmH = (stack.length||'').match(/(\d+(?:\.\d+)?)\s*month/i);
-  let totalWeeksH = 0;
-  if (wmH) totalWeeksH = parseFloat(wmH[1]);
-  else if (dmH) totalWeeksH = Math.ceil(parseFloat(dmH[1])/7);
-  else if (mmH) totalWeeksH = Math.ceil(parseFloat(mmH[1]) * 4.33);
-  const totalNeedlesH = needlesPerWeekH && totalWeeksH ? needlesPerWeekH * totalWeeksH : null;
+  let totalWeeksH = 8;
+  if (wmH) totalWeeksH = Math.max(1, Math.min(Math.ceil(parseFloat(wmH[1])), 52));
+  else if (dmH) totalWeeksH = Math.max(1, Math.min(Math.ceil(parseFloat(dmH[1])/7), 52));
+  else if (mmH) totalWeeksH = Math.max(1, Math.min(Math.ceil(parseFloat(mmH[1]) * 4.33), 52));
+  let totalNeedlesH = 0;
+  for (let w = 0; w < totalWeeksH; w++) {
+    for (let d = 0; d < 7; d++) {
+      const inj = stack.peptides.filter(p => {
+        const wd = stack.weekDays?.[p.id]?.[w];
+        const days = wd !== undefined ? wd : (p.days || []);
+        return days.includes(d);
+      });
+      if (!inj.length) continue;
+      const placed = new Set();
+      let groupCount = 0;
+      inj.forEach(p => {
+        if (placed.has(p.id)) return;
+        placed.add(p.id);
+        (p.stackWith || []).forEach(sid => {
+          const sp = inj.find(op => op.id === sid);
+          if (sp) placed.add(sp.id);
+        });
+        groupCount++;
+      });
+      totalNeedlesH += groupCount;
+    }
+  }
+  if (!totalNeedlesH) totalNeedlesH = null;
   const needleBadge = totalNeedlesH
     ? `<span style="font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:1px 8px">💉 ${totalNeedlesH} needles</span>`
     : '';
@@ -5212,10 +5226,12 @@ function updateNeedleSummary() {
   };
 
   let totalNeedles = 0;
-  const perDayCount = Array(7).fill(0);   // sum of needle groups per weekday, across all weeks
+  const perDayCount = Array(7).fill(0);     // sum of needle groups per weekday, across all weeks
   const perDaySample = Array(7).fill(null); // sample peptide-list for the rows display
+  const perWeekCounts = [];                 // exact needle count for each individual week
 
   for (let w = 0; w < weeks; w++) {
+    let weekCount = 0;
     for (let d = 0; d < 7; d++) {
       const injectingOnThisDay = currentPeptideRows.filter(p => peptideActiveDaysForWeek(p, w).includes(d));
       if (!injectingOnThisDay.length) continue;
@@ -5234,12 +5250,26 @@ function updateNeedleSummary() {
       });
       totalNeedles += groups.length;
       perDayCount[d] += groups.length;
+      weekCount += groups.length;
       if (!perDaySample[d]) perDaySample[d] = groups;
     }
+    perWeekCounts.push(weekCount);
   }
 
   const estTotal = totalNeedles;
-  const totalPerWeek = weeks > 0 ? Math.round((totalNeedles / weeks) * 10) / 10 : 0;
+  // If every week has the same needle count, show that integer.
+  // Otherwise show a min–max range so users don't think we're claiming a
+  // fractional number of injections per week (the prior "average" display
+  // confused people, e.g. it would say 7.5/week when reality was 5 in some
+  // weeks and 10 in others).
+  let perWeekDisplay;
+  if (!perWeekCounts.length) {
+    perWeekDisplay = '0';
+  } else {
+    const minW = Math.min(...perWeekCounts);
+    const maxW = Math.max(...perWeekCounts);
+    perWeekDisplay = (minW === maxW) ? String(minW) : `${minW}–${maxW}`;
+  }
 
   const _existNeedle = document.getElementById('sf-needle-summary');
   if (_existNeedle) _existNeedle.remove();
@@ -5249,7 +5279,7 @@ function updateNeedleSummary() {
   summaryEl.innerHTML = `
     <div class="needle-summary-title">💉 Needle Estimate (per ${weeks}-week protocol)</div>
     <div class="needle-total">
-      <span>Per week</span><span>${totalPerWeek}</span>
+      <span>Per week</span><span>${perWeekDisplay}</span>
     </div>
     <div class="needle-total">
       <span>${weeks} week${weeks===1?'':'s'} total</span><span>${estTotal}</span>
@@ -9546,7 +9576,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.13.0';
+  const APP_VERSION = '1.13.1';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
