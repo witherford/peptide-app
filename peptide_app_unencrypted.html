@@ -544,6 +544,9 @@
       text-align: center; max-width: 680px; margin: 24px auto 0;
     }
     .app-disclaimer strong { color: var(--red); font-weight: 700; }
+    .app-repo-link { margin-top: 10px; }
+    .app-repo-link a { color: var(--text2); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    .app-repo-link a:hover { color: var(--accent); text-decoration: underline; }
 
     /* ══════════════════════════════════════════════
        CONFIRM DIALOG
@@ -739,8 +742,6 @@
     .color-swatch-option.selected { border-color: white; transform: scale(1.15); }
 
     /* Dosage schedule inside peptide row */
-    .dosage-section { margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
-    .dosage-section-label { font-size:9.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:6px; }
     .days-checkbox-row { display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px; }
     .day-cb-label { display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer; }
     .day-cb-label span { font-size:9px;color:var(--text3);font-weight:500; }
@@ -1832,6 +1833,7 @@
 
 <footer class="app-disclaimer">
   <strong>Research use only.</strong> Peptides are sold and used as research compounds only and are <strong>not for human consumption</strong>. The owners and creators of this app are not affiliated with, and receive no compensation from, any peptide reseller. We accept no responsibility for any problems arising from the information in this app or from any products purchased from referenced resellers — any practices are undertaken entirely at your own risk.
+      <div class="app-repo-link"><a href="https://github.com/witherford/peptide-app" target="_blank" rel="noopener">github.com/witherford/peptide-app</a></div>
 </footer>
 
 <div class="offline-banner" id="offlineBanner">⚡ Offline — showing cached data</div>
@@ -1892,6 +1894,10 @@
       <button class="modal-close" id="stackModalClose">✕</button>
     </div>
     <div class="modal-body">
+      <div style="display:flex;gap:10px;align-items:flex-start;background:var(--blue-bg);border:1px solid rgba(55,138,221,0.25);border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:16px">
+        <span style="font-size:16px;flex-shrink:0;line-height:1.3">⚠️</span>
+        <p style="font-size:11.5px;color:var(--text2);line-height:1.55;margin:0">This protocol builder is <strong style="color:var(--text)">not a how-to guide</strong> — it's a calculator to work out the cheapest price and build a protocol-schedule reference. If you're not sure what you're doing, visit the <strong style="color:var(--text)">Guides</strong> section and read the <em>“Beginner's Guide to Peptides”</em> first.</p>
+      </div>
 
       <!-- ── Basic info ── -->
       <div class="form-row">
@@ -1970,12 +1976,10 @@
           <!-- Selected product card (shown when bac water has been picked) -->
           <div id="sf-bac-selected" style="display:none"></div>
 
-          <!-- Always-visible: ml added per peptide vial + cost est -->
-          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:10px">
-            <div style="flex:1;min-width:140px">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:4px">ml added per peptide vial</div>
-              <input class="form-input" id="sf-water-per-vial" type="number" min="0.1" max="10" step="0.1" value="2" placeholder="2" style="font-size:12px">
-            </div>
+          <!-- Water per vial is now set on each peptide (Qty of vials row).
+               Hidden field kept as a vestigial stack-level fallback. -->
+          <input type="hidden" id="sf-water-per-vial" value="2">
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;justify-content:flex-end">
             <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;justify-content:center;padding-bottom:2px">
               <span style="font-size:9.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)">Cost est.</span>
               <span id="sf-bac-price-display" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:var(--text3)">—</span>
@@ -2180,6 +2184,61 @@ function groupByStack(peptides) {
   const groups = new Map();
   peptides.forEach(p => { const r = find(p.id); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(p); });
   return [...groups.values()];
+}
+
+// ── Bacteriostatic water (per-peptide since v1.17) ──
+// Each peptide carries its own ml-of-water-per-vial. Legacy stacks stored a
+// single stack.waterPerVial; migratePeptideWater() seeds any missing per-peptide
+// value from it (or 2) so old protocols keep working.
+function pepWater(p) { const n = parseFloat(p && p.waterPerVial); return (!isNaN(n) && n > 0) ? n : 2; }
+function migratePeptideWater(stack) {
+  if (!stack || !stack.peptides) return;
+  const legacy = parseFloat(stack.waterPerVial);
+  stack.peptides.forEach(p => {
+    if (p.waterPerVial == null || p.waterPerVial === '') {
+      p.waterPerVial = (!isNaN(legacy) && legacy > 0) ? legacy : 2;
+    }
+  });
+}
+// Total bac water (ml) a stack needs = Σ vials × water/vial across peptides.
+function stackTotalWaterMl(stack) {
+  return (stack.peptides || []).reduce((s, p) => s + (p.vialQty || 1) * pepWater(p), 0);
+}
+// Parse a protocol-length string ("8 weeks", "30 days", "2 months") to a week count.
+function weeksFromLength(len) {
+  len = len || '';
+  const wm = len.match(/(\d+(?:\.\d+)?)\s*week/i);
+  const dm = len.match(/(\d+(?:\.\d+)?)\s*day/i);
+  const mm = len.match(/(\d+(?:\.\d+)?)\s*month/i);
+  if (wm) return Math.max(1, Math.min(Math.ceil(parseFloat(wm[1])), 52));
+  if (dm) return Math.max(1, Math.min(Math.ceil(parseFloat(dm[1]) / 7), 52));
+  if (mm) return Math.max(1, Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52));
+  return 8;
+}
+// Distinct injection-days across the whole protocol (a day with ≥1 injection
+// counts once). Mon–Fri over 8 weeks = 40.
+function countInjectionDays(stack, weeks) {
+  let days = 0;
+  for (let w = 0; w < weeks; w++) {
+    for (let d = 0; d < 7; d++) {
+      const any = (stack.peptides || []).some(p => {
+        const wd = stack.weekDays?.[p.id]?.[w];
+        const arr = wd !== undefined ? wd : (p.days || []);
+        return arr.includes(d);
+      });
+      if (any) days++;
+    }
+  }
+  return days;
+}
+// "8 weeks (40 days)" — appends injection-days when length is in weeks/months;
+// returns the raw length unchanged when it's already expressed in days.
+function durationLabel(stack, weeks) {
+  const len = stack.length || '';
+  if (!len) return '';
+  if (/day/i.test(len) && !/week|month/i.test(len)) return len;
+  const days = countInjectionDays(stack, weeks);
+  return days > 0 ? `${len} (${days} day${days === 1 ? '' : 's'})` : len;
 }
 function nextColor(usedIds) {
   const idx = PILL_COLORS.findIndex(c => !usedIds.includes(c.id));
@@ -2645,7 +2704,7 @@ function buildStackCard(stack) {
         lines.push(`• Bacteriostatic Water — ${stack.bacWater.qty}`);
       }
       lines.push('');
-      if (stack.waterPerVial) lines.push(`💧 Add ${stack.waterPerVial}ml bacteriostatic water per peptide vial`);
+      lines.push(`💧 Bacteriostatic water needed: ${stackTotalWaterMl(stack).toFixed(1).replace(/\.0$/,'')}ml total`);
       if (stack.notes) lines.push(`📝 ${stack.notes}`);
       const text = lines.join('\n');
       navigator.clipboard.writeText(text).then(() => {
@@ -2683,9 +2742,8 @@ function buildStackCard(stack) {
       // Build schedule HTML fresh — use the combined view function
       const schedHtml = buildCombinedScheduleView(stack);
 
-      // Build legend lines — now also showing vial qty, total mg, and units to draw
-      // per dose for the bacteriostatic-water volume the user picked.
-      const exportWaterMl = parseFloat(stack.waterPerVial) || 2;
+      // Build legend lines. Bac water is per-peptide (p.waterPerVial).
+      migratePeptideWater(stack);
       const exportProds = (typeof catAllProducts === 'function') ? catAllProducts() : [];
       function _vialMgFor(p) {
         if (typeof _pbBestPriceForRowName === 'function') {
@@ -2705,30 +2763,41 @@ function buildStackCard(stack) {
       // syringe "Draw Per Dose" section below). null = vial mg / dose unknown.
       const unitsById = new Map();
       stack.peptides.forEach(p => {
-        const vialMg = _vialMgFor(p), dMcg = _doseMcg(p);
+        const vialMg = _vialMgFor(p), dMcg = _doseMcg(p), w = pepWater(p);
         unitsById.set(p.id,
-          (dMcg != null && vialMg != null && exportWaterMl > 0)
-            ? (dMcg * exportWaterMl) / (vialMg * 10) : null);
+          (dMcg != null && vialMg != null && w > 0)
+            ? (dMcg * w) / (vialMg * 10) : null);
       });
+      const _fmtNum = n => (Math.round(n * 10) / 10).toString().replace(/\.0$/, '');
 
-      const legendItems = stack.peptides.map(p => {
+      // COMPOUNDS → "Peptides" sub-section:
+      // "{qty} × {size} vial(s) of {name} · {total}mg total"
+      const peptidesItems = stack.peptides.map(p => {
         const col = getColorById(p.color);
         const vialMg = _vialMgFor(p);
         const vialQty = p.vialQty || 1;
         const totalMg = (vialMg != null) ? vialMg * vialQty : null;
-        const units = unitsById.get(p.id);
-        const unitsTxt = units != null ? `${(Math.round(units * 10) / 10).toString().replace(/\.0$/,'')} units per injection` : '';
-        const qtyTxt   = `${vialQty} vial${vialQty===1?'':'s'}` + (totalMg != null ? ` · ${totalMg}mg total` : '');
-        // Show just the base peptide name (e.g. "BPC-157"), not the full product label.
-        const pepName  = (typeof catPeptideName === 'function' ? catPeptideName(p) : '') || p.name || '';
-        return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
-          <div style="width:10px;height:10px;border-radius:3px;background:${col.bg};flex-shrink:0;margin-top:4px"></div>
+        const pepName = (typeof catPeptideName === 'function' ? catPeptideName(p) : '') || p.name || '';
+        const vialTxt = `${vialQty} × ${vialMg != null ? vialMg + 'mg' : '?'} vial${vialQty===1?'':'s'} of ${pepName}` + (totalMg != null ? ` · ${totalMg}mg total` : '');
+        return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <div style="width:10px;height:10px;border-radius:3px;background:${col.bg};flex-shrink:0;margin-top:3px"></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;color:${textMain};font-weight:600">${escHtml(pepName)}</div>
-            <div style="font-size:10.5px;color:${textMuted};font-family:'JetBrains Mono',monospace;margin-top:2px">🧪 ${escHtml(qtyTxt)}</div>
-            ${unitsTxt ? `<div style="font-size:10.5px;color:${accent};font-family:'JetBrains Mono',monospace;margin-top:1px">💉 ${escHtml(unitsTxt)}</div>
-            <div style="font-size:10.5px;color:${textMuted};font-family:'JetBrains Mono',monospace;margin-top:1px">${exportWaterMl}ml Bacteriostatic water per vial of ${escHtml(pepName)}</div>` : ''}
+            <div style="font-size:10.5px;color:${textMuted};font-family:'JetBrains Mono',monospace;margin-top:2px">🧪 ${escHtml(vialTxt)}</div>
           </div>
+        </div>`;
+      }).join('');
+
+      // COMPOUNDS → "Bacteriostatic water" sub-section, one line per peptide.
+      const bacWaterItems = stack.peptides.map(p => {
+        const col = getColorById(p.color);
+        const vialQty = p.vialQty || 1;
+        const w = pepWater(p);
+        const pepName = (typeof catPeptideName === 'function' ? catPeptideName(p) : '') || p.name || '';
+        const txt = `${_fmtNum(w)}ml of Bacteriostatic water × ${vialQty} vial${vialQty===1?'':'s'} of ${pepName} · total ${_fmtNum(w * vialQty)}ml of water`;
+        return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <div style="width:10px;height:10px;border-radius:3px;background:${col.bg};flex-shrink:0;margin-top:3px"></div>
+          <div style="flex:1;min-width:0;font-size:10.5px;color:${textMuted};font-family:'JetBrains Mono',monospace">💧 ${escHtml(txt)}</div>
         </div>`;
       }).join('');
 
@@ -2754,7 +2823,8 @@ function buildStackCard(stack) {
         }
       }
       const totalPeptideVials = stack.peptides.reduce((s, p) => s + (p.vialQty || 1), 0);
-      const exportNeededWaterMl = totalPeptideVials * exportWaterMl;
+      const exportNeededWaterMl = stackTotalWaterMl(stack);
+      const exportDurationTxt = durationLabel(stack, exportWeeks) || `${exportWeeks} week${exportWeeks===1?'':'s'}`;
       const needleBlock = `<div style="background:${bg2};border:1px solid ${border};border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:18px">
         <div>
           <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:3px">Needles (total)</div>
@@ -2762,11 +2832,11 @@ function buildStackCard(stack) {
         </div>
         <div>
           <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:3px">Bac. water needed</div>
-          <div style="font-size:14px;font-weight:600;color:${textMain};font-family:'JetBrains Mono',monospace">${exportNeededWaterMl.toFixed(1).replace(/\.0$/,'')}ml <span style="font-size:10px;color:${textMuted};font-weight:400">(${totalPeptideVials} vial${totalPeptideVials===1?'':'s'} × ${exportWaterMl}ml)</span></div>
+          <div style="font-size:14px;font-weight:600;color:${textMain};font-family:'JetBrains Mono',monospace">${exportNeededWaterMl.toFixed(1).replace(/\.0$/,'')}ml</div>
         </div>
         <div>
           <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:3px">Duration</div>
-          <div style="font-size:14px;font-weight:600;color:${textMain};font-family:'JetBrains Mono',monospace">${exportWeeks} week${exportWeeks===1?'':'s'}</div>
+          <div style="font-size:14px;font-weight:600;color:${textMain};font-family:'JetBrains Mono',monospace">${escHtml(exportDurationTxt)}</div>
         </div>
       </div>`;
 
@@ -2852,8 +2922,7 @@ function buildStackCard(stack) {
       }).join('');
       const drawSection = syringeRows ? `<div style="background:${bg2};border:1px solid ${border};border-radius:10px;padding:12px 16px;margin-bottom:16px">
           <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:6px">Draw Per Dose</div>
-          <div style="font-size:9.5px;color:${textMuted}">Insulin syringe scale (100 units = 1ml)</div>
-          <div style="font-size:9.5px;color:${textMuted};margin-bottom:8px">${exportWaterMl}ml Bacteriostatic water per vial</div>
+          <div style="font-size:9.5px;color:${textMuted};margin-bottom:8px">Insulin syringe scale (100 units = 1ml) · bac-water per vial set per peptide</div>
           ${syringeRows}
         </div>` : '';
 
@@ -2866,17 +2935,19 @@ function buildStackCard(stack) {
           <div>
             <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${accent};margin-bottom:4px">Protocol Schedule</div>
             <div style="font-size:22px;font-weight:700;color:${textMain};letter-spacing:-0.02em;line-height:1.2">${escHtml(stack.name)}</div>
-            ${stack.length ? `<div style="font-size:12px;color:${textMuted};margin-top:4px">Duration: ${escHtml(stack.length)}</div>` : ''}
           </div>
           <div style="background:${bg2};border:1px solid ${border};border-radius:8px;padding:8px 14px;text-align:right">
             <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted}">Witherrs</div>
             <div style="font-size:10px;color:${textMuted}">Peptide App</div>
           </div>
         </div>
-        <!-- Legend -->
+        <!-- Compounds: Peptides + Bacteriostatic water sub-sections -->
         <div style="background:${bg2};border:1px solid ${border};border-radius:10px;padding:12px 16px;margin-bottom:16px">
           <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:8px">Compounds</div>
-          ${legendItems}
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${accent};margin-bottom:6px">Peptides</div>
+          ${peptidesItems}
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${accent};margin:10px 0 6px;border-top:1px solid ${border};padding-top:10px">Bacteriostatic water</div>
+          ${bacWaterItems}
         </div>
         ${drawSection}
         ${stackingNote}
@@ -2892,7 +2963,8 @@ function buildStackCard(stack) {
             ${[
               'Refrigerate reconstituted vials at 2–8°C.',
               'Keep vials in the body of the fridge — never the door (temperature swings degrade peptides).',
-              'Store unmixed (lyophilised) vials cold and away from light; long-term, freeze them.',
+              'Store powder-form (un-reconstituted) vials refrigerated and away from light.',
+              'For long-term storage, freeze powder-form vials at −20°C (up to ~2 years) or −80°C (longer still).',
               'Don\'t re-freeze reconstituted peptide; avoid repeated freeze/thaw cycles.',
             ].map(t => `<div style="font-size:10px;color:${textMain};line-height:1.5;margin-bottom:3px;display:flex;gap:6px"><span style="color:${accent}">•</span><span>${t}</span></div>`).join('')}
           </div>
@@ -3086,7 +3158,7 @@ function buildStackSummaryPanel(stack) {
   const sym = currencySymbol();
   const rate = fxRate();
   const allProds = (typeof catAllProducts === 'function') ? catAllProducts() : [];
-  const mlPV = stack.waterPerVial || 2;
+  migratePeptideWater(stack);
 
   let hasAnyPrice = false;
   let grandTotal = 0;
@@ -3119,14 +3191,14 @@ function buildStackSummaryPanel(stack) {
     if (!isNaN(doseAmt) && doseAmt > 0) {
       if (doseUnit === 'mcg') doseMcg = doseAmt;
       else if (doseUnit === 'mg') doseMcg = doseAmt * 1000;
-      else if (doseUnit === 'ml' && vialMg) doseMcg = doseAmt * (vialMg * 1000 / mlPV);
+      else if (doseUnit === 'ml' && vialMg) doseMcg = doseAmt * (vialMg * 1000 / pepWater(p));
     }
 
     // Syringe units to draw (U-100 insulin syringe) — same formula used in the
     // modal's reconstitution panel and in the export.
     let unitsStr = '';
     if (doseMcg != null && vialMg != null) {
-      const u = (doseMcg * mlPV) / (vialMg * 10);
+      const u = (doseMcg * pepWater(p)) / (vialMg * 10);
       unitsStr = (Math.round(u * 10) / 10) + ' units';
     }
 
@@ -3170,7 +3242,7 @@ function buildStackSummaryPanel(stack) {
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:400;color:var(--text)">Bacteriostatic Water</div>
           <div style="font-size:11px;color:var(--text2);margin-top:2px;font-family:'JetBrains Mono',monospace">${escHtml(stack.bacWater.qty)}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:1px;font-family:'JetBrains Mono',monospace">${mlPV}ml per peptide vial · ${(bvq * (parseFloat((stack.bacWater.qty||'').match(/[×x]\s*(\d+(?:\.\d+)?)\s*ml/i)?.[1] || mlPV)) || 0).toFixed(0)}ml total</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:1px;font-family:'JetBrains Mono',monospace">${stackTotalWaterMl(stack).toFixed(1).replace(/\.0$/,'')}ml total needed across all peptides</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--text)">${sym}${bacTotal.toFixed(rate>=100?0:2)}</div>
@@ -3207,9 +3279,9 @@ function buildStackSummaryPanel(stack) {
   }
   if (!totalNeedles) totalNeedles = null;
 
-  // Water requirement check — total ml needed = (peptide vial count) × (ml per peptide vial)
+  // Water requirement = Σ over peptides of (vials × that peptide's ml-per-vial).
   const totalPeptideVials = stack.peptides.reduce((s, p) => s + (p.vialQty || 1), 0);
-  const neededMl = totalPeptideVials * mlPV;
+  const neededMl = stackTotalWaterMl(stack);
   let availableMl = 0;
   const _bacQty = stack.bacWater?.qty || '';
   const mBacAv = _bacQty.match(/(\d+)\s*[×x]\s*(\d+(?:\.\d+)?)\s*ml/i);
@@ -4046,6 +4118,7 @@ function openStackModal(stack, forceCatId) {
     if (sizeEl) { sizeEl.textContent = mlPV + 'ml/vial'; sizeEl.dataset.mlPerVial = mlPV; }
   }
 
+  if (stack) migratePeptideWater(stack);
   currentPeptideRows = stack ? JSON.parse(JSON.stringify(stack.peptides.map(p => ({
     // ensure new fields exist for old stacks
     doseAmount: p.doseAmount || '',
@@ -4053,6 +4126,7 @@ function openStackModal(stack, forceCatId) {
     days:       p.days       || [],
     stackWith:  p.stackWith  || [],
     vialQty:    p.vialQty    || 1,
+    waterPerVial: (p.waterPerVial != null && p.waterPerVial !== '') ? p.waterPerVial : (parseFloat(stack.waterPerVial) || 2),
     ...p,
   })))) : [];
 
@@ -4115,6 +4189,7 @@ if (_sfAddPeptideEl) _sfAddPeptideEl.addEventListener('click', () => {
   currentPeptideRows.push({
     id: uid(), name: '', dose: '', doseAmount: '', doseUnit: 'mcg',
     days: [], schedule: '', color: nextColor(usedColors), stackWith: [],
+    vialQty: 1, waterPerVial: 2,
     retailerA: { name: '', qty: '', url: '' },
     retailerB: { name: '', qty: '', url: '' },
   });
@@ -4140,11 +4215,6 @@ function renderPeptideRows() {
     const row = document.createElement('div');
     row.className = 'peptide-row' + (isStacked || stackedByMe ? ' stacked-indicator' : '');
 
-    // Build dose from doseAmount + doseUnit if present, else fall back to dose string
-    const selectedDays = p.days || [];
-    const doseAmt  = p.doseAmount || '';
-    const doseUnit = p.doseUnit || 'mcg';
-
     // Price + size for this peptide from catalogue. Use the fuzzy stem matcher
     // so a row whose name embeds a size (e.g. "BPC-157 5mg") still resolves; fall
     // back to any catalogue match for size, then to the mg parsed from the name,
@@ -4168,17 +4238,23 @@ function renderPeptideRows() {
         <button class="peptide-row-remove" data-remove="${idx}" title="Remove">✕</button>
       </div>
 
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);flex-wrap:wrap">
-        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:120px">
+      <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:110px">
           <span style="font-size:9.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)">Qty of vials</span>
           <div style="display:flex;align-items:center;gap:6px">
             <input class="form-input" type="number" min="1" max="99" step="1"
-              style="font-size:13px;padding:5px 8px;width:70px;font-weight:700;font-family:'JetBrains Mono',monospace;text-align:center"
+              style="font-size:13px;padding:5px 8px;width:64px;font-weight:700;font-family:'JetBrains Mono',monospace;text-align:center"
               value="${vialQty}" data-field="vialQty" data-idx="${idx}" data-price-update="true">
             ${vialSize ? `<span style="font-size:11px;color:var(--text2)">${escHtml(vialSize)}/vial</span>` : ''}
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:110px">
+          <span style="font-size:9.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)">ml bac-water / vial</span>
+          <input class="form-input" type="number" min="0.1" max="20" step="0.1"
+            style="font-size:13px;padding:5px 8px;width:64px;font-weight:700;font-family:'JetBrains Mono',monospace;text-align:center"
+            value="${pepWater(p)}" data-field="waterPerVial" data-idx="${idx}">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;flex:1;min-width:100px">
           <span style="font-size:9.5px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)">Line total</span>
           <span id="sf-peptide-price-${idx}" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:${linePrice?'var(--green)':'var(--text3)'}">
             ${linePrice || (unitPriceNum==null?'—':sym2+'0.00')}
@@ -4187,21 +4263,13 @@ function renderPeptideRows() {
         </div>
       </div>
 
-      <div class="dosage-section">
-        <div class="dosage-section-label">Dosage per injection</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
-          <input class="form-input" type="number" min="0" step="any" style="font-size:12px;padding:5px 8px;width:90px" placeholder="Amount" value="${escHtml(String(doseAmt))}" data-field="doseAmount" data-idx="${idx}">
-          <select class="form-select" style="font-size:12px;padding:5px 8px;width:80px" data-field="doseUnit" data-idx="${idx}">
-            ${['mcg','mg','IU','ml'].map(u=>`<option value="${u}"${doseUnit===u?' selected':''}>${u}</option>`).join('')}
-          </select>
-          <span style="font-size:10px;color:var(--text3)">per injection</span>
-        </div>
-
-      </div>
-
       <div class="color-swatch-row">
         <span style="font-size:10px;color:var(--text3);margin-right:2px">Colour:</span>
-        ${PILL_COLORS.map(c => `<div class="color-swatch-option${p.color === c.id ? ' selected' : ''}" style="background:${c.bg}" data-color="${c.id}" data-idx="${idx}"></div>`).join('')}
+        ${PILL_COLORS.map(c => {
+          const usedByOther = currentPeptideRows.some((op, i) => i !== idx && op.color === c.id);
+          const sel = p.color === c.id;
+          return `<div class="color-swatch-option${sel ? ' selected' : ''}" style="background:${c.bg}${usedByOther && !sel ? ';opacity:0.25;cursor:not-allowed' : ''}" data-color="${c.id}" data-idx="${idx}"${usedByOther && !sel ? ' data-disabled="1"' : ''}></div>`;
+        }).join('')}
       </div>`;
 
     container.appendChild(row);
@@ -4242,11 +4310,7 @@ function renderPeptideRows() {
         return;
       }
       currentPeptideRows[idx][field] = e.target.value;
-      if (field === 'doseAmount' || field === 'doseUnit') {
-        const _da = currentPeptideRows[idx].doseAmount;
-        const _du = currentPeptideRows[idx].doseUnit || 'mcg';
-        currentPeptideRows[idx].dose = (_da ? _da + ' ' + _du : '');
-      }
+      if (field === 'waterPerVial') updateWaterWarning();
       if (field === 'name') { renderUrlRows(); renderStackingSection(); }
       updateNeedleSummary();
       clearTimeout(window._pbScheduleTimer);
@@ -4265,6 +4329,7 @@ function renderPeptideRows() {
   });
   container.querySelectorAll('[data-color]').forEach(sw => {
     sw.addEventListener('click', () => {
+      if (sw.dataset.disabled) { showToast('That colour is already used by another peptide'); return; }
       const idx = +sw.dataset.idx;
       currentPeptideRows[idx].color = sw.dataset.color;
       renderPeptideRows();
@@ -4345,7 +4410,6 @@ function renderStackingPairs() {
 }
 
 // ── Water warning ──
-document.getElementById('sf-water-per-vial').addEventListener('input', () => { updateWaterWarning(); updateNeedleSummary(); clearTimeout(window._pbScheduleTimer); window._pbScheduleTimer = setTimeout(pbRenderModalSchedule, 100); });
 document.getElementById('sf-bac-qty').addEventListener('input', () => { updateWaterWarning(); });
 // Re-render schedule + needle estimate when protocol length changes (affects week count)
 document.getElementById('sf-length-num')?.addEventListener('input', () => {
@@ -5011,20 +5075,16 @@ function pbRenderModalSchedule() {
 function updateWaterWarning() {
   const warn   = document.getElementById('sf-water-warning');
   const reqPill = document.getElementById('sf-water-required');
-  const mlPerVial = parseFloat(document.getElementById('sf-water-per-vial').value) || 2;
   const bacQtyStr = document.getElementById('sf-bac-qty').value || '';
 
-  // Count peptide vials: use vialQty if available, else try to parse qty string
-  let totalPeptideVials = 0;
+  // Per-peptide water: total = Σ (vials × that peptide's ml-per-vial).
+  let totalPeptideVials = 0, neededMl = 0;
   currentPeptideRows.forEach(p => {
-    if (p.vialQty) { totalPeptideVials += p.vialQty; return; }
-    const qStr = p.retailerA?.qty || '';
-    const m = qStr.match(/(\d+)\s*[×x]/);
-    if (m) totalPeptideVials += parseInt(m[1]);
-    else totalPeptideVials += 1;
+    let vials = p.vialQty;
+    if (!vials) { const m = (p.retailerA?.qty || '').match(/(\d+)\s*[×x]/); vials = m ? parseInt(m[1]) : 1; }
+    totalPeptideVials += vials;
+    neededMl += vials * pepWater(p);
   });
-
-  const neededMl = totalPeptideVials * mlPerVial;
 
   // Parse total bac water ml (e.g. "2 × 10ml" → 20ml, "20ml" → 20)
   let availableMl = 0;
@@ -5048,8 +5108,7 @@ function updateWaterWarning() {
         statusHtml = `<span style="color:var(--green);font-weight:600">${remaining.toFixed(1).replace(/\.0$/,'')}ml spare</span>`;
       }
       reqPill.innerHTML = `
-        <span style="color:var(--text2)">Required for this stack: <strong style="color:var(--text);font-family:'JetBrains Mono',monospace">${neededMl.toFixed(1).replace(/\.0$/,'')}ml</strong>
-          <small style="color:var(--text3);font-weight:400">(${totalPeptideVials} vial${totalPeptideVials===1?'':'s'} × ${mlPerVial}ml)</small></span>
+        <span style="color:var(--text2)">Required for this stack: <strong style="color:var(--text);font-family:'JetBrains Mono',monospace">${neededMl.toFixed(1).replace(/\.0$/,'')}ml</strong></span>
         <span>${statusHtml}</span>`;
     }
   }
@@ -5061,7 +5120,7 @@ function updateWaterWarning() {
     warn.style.display = 'block';
     warn.innerHTML = `⚠️ <strong>Not enough bacteriostatic water!</strong><br>
       You need <strong>${neededMl.toFixed(1).replace(/\.0$/,'')}ml</strong> but only have <strong>${availableMl.toFixed(1).replace(/\.0$/,'')}ml</strong>.
-      Add more vials of bacteriostatic water (or reduce <em>ml per peptide vial</em>) before starting the protocol.`;
+      Add more vials of bacteriostatic water (or reduce each peptide's <em>ml bac-water / vial</em>) before starting the protocol.`;
   }
 }
 
@@ -8958,7 +9017,7 @@ function pbCommitCartToStack() {
       id:uid(), name:p.name,
       dose:'', doseAmount:'', doseUnit:'mcg',
       days:[], schedule:'', color:col, stackWith:[],
-      vialQty: qty,
+      vialQty: qty, waterPerVial: 2,
       retailerA:{ name:supplierLabel, qty:qtyLabel, url:p.url||'' },
       retailerB:{ name:'', qty:'', url:'' },
       _catalogueProduct: p,
@@ -9359,7 +9418,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.16.1';
+  const APP_VERSION = '1.17.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
