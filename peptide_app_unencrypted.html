@@ -2750,10 +2750,13 @@ function buildStackCard(stack) {
     });
   });
 
-  // Save protocol card as image (schedule only, high-res)
-  card.querySelector('[data-save-card]')?.addEventListener('click', async function() {
+  // Export / copy the protocol reference card. Two buttons share this handler,
+  // branching on data-export-mode ("image" downloads a PNG, "clipboard" copies it).
+  card.querySelectorAll('[data-save-card]').forEach(btnEl => btnEl.addEventListener('click', async function() {
     const btn = this;
-    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg> Generating…`;
+    const mode = btn.dataset.exportMode || 'image';
+    const label = btn.innerHTML;
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg> ${mode === 'clipboard' ? 'Copying…' : 'Generating…'}`;
     btn.disabled = true;
     try {
       // Build a standalone export element (schedule + legend only)
@@ -3027,11 +3030,35 @@ function buildStackCard(stack) {
           width: 720,
         });
         document.body.removeChild(exportNode);
-        const link = document.createElement('a');
-        link.download = (stack.name || 'protocol').replace(/[^a-z0-9]/gi, '_') + '_schedule.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        showToast('✓ Protocol schedule exported at 3× resolution');
+        if (mode === 'clipboard') {
+          // Copy the rendered card to the clipboard as a PNG image.
+          let copied = false;
+          if (navigator.clipboard && window.ClipboardItem) {
+            try {
+              const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+              if (blob) {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                copied = true;
+              }
+            } catch (err) { console.warn('Clipboard image copy failed', err); }
+          }
+          if (copied) {
+            showToast('✓ Reference card copied to clipboard');
+          } else {
+            // Fallback: download it so the user still gets the image.
+            const link = document.createElement('a');
+            link.download = (stack.name || 'protocol').replace(/[^a-z0-9]/gi, '_') + '_schedule.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showToast('Clipboard not supported — downloaded the image instead');
+          }
+        } else {
+          const link = document.createElement('a');
+          link.download = (stack.name || 'protocol').replace(/[^a-z0-9]/gi, '_') + '_schedule.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          showToast('✓ Protocol reference card exported at 3× resolution');
+        }
       } else {
         document.body.removeChild(exportNode);
         // Fallback: print window
@@ -3062,9 +3089,9 @@ function buildStackCard(stack) {
       showToast('Could not export — try again');
       console.error(e);
     }
-    btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Create protocol reference card`;
+    btn.innerHTML = label;
     btn.disabled = false;
-  });
+  }));
 
   return card;
 }
@@ -3159,10 +3186,16 @@ function buildStackBodyHtml(stack) {
       </table>
     </div>
     ${buildStackSummaryPanel(stack)}
-    <button class="show-sched-btn" data-save-card="${stack.id}">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Create protocol reference card
-    </button>`;
+    <div style="display:flex;flex-wrap:wrap;gap:0">
+      <button class="show-sched-btn" data-save-card="${stack.id}" data-export-mode="image" style="flex:1;min-width:180px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export protocol reference card to image
+      </button>
+      <button class="show-sched-btn" data-save-card="${stack.id}" data-export-mode="clipboard" style="flex:1;min-width:180px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy protocol reference card to clipboard
+      </button>
+    </div>`;
 }
 
 // ── Stack Summary Panel ──
@@ -9430,7 +9463,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.19.0';
+  const APP_VERSION = '1.20.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
