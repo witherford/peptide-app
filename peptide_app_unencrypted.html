@@ -2673,15 +2673,22 @@ function buildStackCard(stack) {
         return p.doseUnit === 'mg' ? n * 1000 : n;
       }
 
+      // Single source of truth for units-to-draw per peptide (reused by the
+      // syringe "Draw Per Dose" section below). null = vial mg / dose unknown.
+      const unitsById = new Map();
+      stack.peptides.forEach(p => {
+        const vialMg = _vialMgFor(p), dMcg = _doseMcg(p);
+        unitsById.set(p.id,
+          (dMcg != null && vialMg != null && exportWaterMl > 0)
+            ? (dMcg * exportWaterMl) / (vialMg * 10) : null);
+      });
+
       const legendItems = stack.peptides.map(p => {
         const col = getColorById(p.color);
         const vialMg = _vialMgFor(p);
         const vialQty = p.vialQty || 1;
         const totalMg = (vialMg != null) ? vialMg * vialQty : null;
-        const dMcg = _doseMcg(p);
-        const units = (dMcg != null && vialMg != null && exportWaterMl > 0)
-          ? (dMcg * exportWaterMl) / (vialMg * 10)
-          : null;
+        const units = unitsById.get(p.id);
         const unitsTxt = units != null ? `${(Math.round(units * 10) / 10).toString().replace(/\.0$/,'')} units / dose` : '';
         const qtyTxt   = `${vialQty} vial${vialQty===1?'':'s'}` + (totalMg != null ? ` · ${totalMg}mg total` : '');
         return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
@@ -2763,6 +2770,83 @@ function buildStackCard(stack) {
            </div>`
         : '';
 
+      // "Draw Per Dose" syringe section --------------------------------------
+      // Group peptides by stackWith connectivity (transitive). Peptides sharing
+      // a needle render as one syringe with segmented coloured fill.
+      function buildInjectionGroups(peptides) {
+        const byId = new Map(peptides.map(p => [p.id, p]));
+        const parent = new Map(peptides.map(p => [p.id, p.id]));
+        const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+        const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+        peptides.forEach(p => (p.stackWith || []).forEach(sid => { if (byId.has(sid)) union(p.id, sid); }));
+        const groups = new Map();
+        peptides.forEach(p => {
+          const root = find(p.id);
+          if (!groups.has(root)) groups.set(root, []);
+          groups.get(root).push(p);
+        });
+        return [...groups.values()];
+      }
+
+      // Insulin-syringe graphic built from divs (html2canvas-friendly — inline
+      // SVG <text>/transforms rasterise unreliably). Fixed 0–100u (1ml) scale.
+      function buildSyringeDiv(segments, opts) {
+        const W = 380, BARREL_H = 26, AXIS_Y = 40, x0 = 6, x1 = x0 + W, MAX_U = 100;
+        const knownTotal = segments.reduce((s, g) => s + (g.units || 0), 0);
+        const overCap = knownTotal > MAX_U;
+        const px = u => x0 + (Math.min(u, MAX_U) / MAX_U) * W;
+        let cum = 0, fills = '';
+        segments.forEach(g => {
+          if (g.units == null || g.units <= 0) return;
+          const start = px(cum), end = px(cum + g.units);
+          if (end > start) fills += `<div style="position:absolute;left:${start}px;top:0;width:${end-start}px;height:100%;background:${g.color}"></div>`;
+          cum += g.units;
+        });
+        let ticks = '';
+        for (let u = 0; u <= 100; u += 20) {
+          const x = px(u);
+          ticks += `<div style="position:absolute;left:${x}px;top:0;width:1px;height:8px;background:${opts.textMuted}"></div>`;
+          ticks += `<div style="position:absolute;left:${x}px;top:9px;transform:translateX(-50%);font-size:8px;color:${opts.textMuted};font-family:'JetBrains Mono',monospace">${u}</div>`;
+        }
+        for (let u = 10; u < 100; u += 20) {
+          const x = px(u);
+          ticks += `<div style="position:absolute;left:${x}px;top:0;width:1px;height:4px;background:${opts.textMuted};opacity:0.5"></div>`;
+        }
+        return `
+        <div style="position:relative;width:${x1 + 34}px;height:${AXIS_Y + 14}px">
+          <div style="position:absolute;left:0;top:${AXIS_Y - BARREL_H}px;width:4px;height:${BARREL_H + 8}px;background:${opts.textMuted};border-radius:2px"></div>
+          <div style="position:absolute;left:${x0}px;top:${AXIS_Y - BARREL_H}px;width:${W}px;height:${BARREL_H}px;border:1.5px solid ${opts.textMuted};border-radius:3px;overflow:hidden;background:${opts.bg}">${fills}</div>
+          <div style="position:absolute;left:${x1}px;top:${AXIS_Y - BARREL_H/2 - 1}px;width:26px;height:2px;background:${opts.textMuted}"></div>
+          <div style="position:absolute;left:0;top:${AXIS_Y}px;width:${x1}px;height:18px">${ticks}</div>
+        </div>${overCap ? `<div style="font-size:8px;color:#e06b6b;font-family:'JetBrains Mono',monospace;margin-top:-2px">⚠ total ${Math.round(knownTotal*10)/10}u exceeds 100u (1ml)</div>` : ''}`;
+      }
+
+      const fmtU = u => u == null ? '?' : (Math.round(u * 10) / 10).toString().replace(/\.0$/, '');
+      const drawGroups = buildInjectionGroups(stack.peptides);
+      const syringeRows = drawGroups.map(group => {
+        const segs = group.map(p => ({ units: unitsById.get(p.id), color: getColorById(p.color).bg, name: p.name }));
+        const anyUnknown = segs.some(s => s.units == null);
+        const labels = segs.map(s =>
+          `<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+             <div style="width:9px;height:9px;border-radius:2px;background:${s.color};flex-shrink:0"></div>
+             <span style="font-size:11px;color:${textMain};font-weight:600">${escHtml(s.name)}</span>
+             <span style="font-size:10.5px;color:${s.units==null?textMuted:accent};font-family:'JetBrains Mono',monospace">— ${fmtU(s.units)} units</span>
+           </div>`).join('');
+        return `<div style="display:flex;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid ${border}">
+            <div style="flex-shrink:0">${buildSyringeDiv(segs, { textMuted, bg, accent })}</div>
+            <div style="flex:1;min-width:0">
+              ${group.length > 1 ? `<div style="font-size:8.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${accent};margin-bottom:4px">⚡ Same needle</div>` : ''}
+              ${labels}
+              ${anyUnknown ? `<div style="font-size:9px;color:${textMuted};margin-top:2px">Some doses can't be calculated (unknown vial mg)</div>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+      const drawSection = syringeRows ? `<div style="background:${bg2};border:1px solid ${border};border-radius:10px;padding:12px 16px;margin-bottom:16px">
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:6px">Draw Per Dose</div>
+          <div style="font-size:9.5px;color:${textMuted};margin-bottom:8px">Insulin syringe scale (100 units = 1ml) · ${exportWaterMl}ml water per vial</div>
+          ${syringeRows}
+        </div>` : '';
+
       // Temporarily inject export node into the DOM for html2canvas
       const exportNode = document.createElement('div');
       exportNode.style.cssText = `position:fixed;left:-9999px;top:0;width:720px;background:${bg};padding:28px 28px 24px;font-family:'DM Sans',system-ui,sans-serif;border-radius:16px;`;
@@ -2784,6 +2868,7 @@ function buildStackCard(stack) {
           <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:8px">Compounds</div>
           ${legendItems}
         </div>
+        ${drawSection}
         ${stackingNote}
         ${needleBlock}
         <!-- Schedule grid — inherit the existing rendered grid -->
@@ -9584,7 +9669,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.13.3';
+  const APP_VERSION = '1.14.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
