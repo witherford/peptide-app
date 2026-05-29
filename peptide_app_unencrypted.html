@@ -2706,17 +2706,17 @@ function buildStackCard(stack) {
         const vialQty = p.vialQty || 1;
         const totalMg = (vialMg != null) ? vialMg * vialQty : null;
         const units = unitsById.get(p.id);
-        const unitsTxt = units != null ? `${(Math.round(units * 10) / 10).toString().replace(/\.0$/,'')} units / dose` : '';
+        const unitsTxt = units != null ? `${(Math.round(units * 10) / 10).toString().replace(/\.0$/,'')} units per injection` : '';
         const qtyTxt   = `${vialQty} vial${vialQty===1?'':'s'}` + (totalMg != null ? ` · ${totalMg}mg total` : '');
+        // Show just the base peptide name (e.g. "BPC-157"), not the full product label.
+        const pepName  = (typeof catPeptideName === 'function' ? catPeptideName(p) : '') || p.name || '';
         return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
           <div style="width:10px;height:10px;border-radius:3px;background:${col.bg};flex-shrink:0;margin-top:4px"></div>
           <div style="flex:1;min-width:0">
-            <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:6px">
-              <span style="font-size:12px;color:${textMain};font-weight:600">${escHtml(p.name)}</span>
-              <span style="font-size:11px;color:${textMuted}">${escHtml(p.dose||'')}</span>
-            </div>
-            <div style="font-size:10.5px;color:${textMuted};font-family:'JetBrains Mono',monospace;margin-top:2px">📦 ${escHtml(qtyTxt)}</div>
-            ${unitsTxt ? `<div style="font-size:10.5px;color:${accent};font-family:'JetBrains Mono',monospace;margin-top:1px">🔬 ${escHtml(unitsTxt)} <span style="color:${textMuted};font-weight:400">(${exportWaterMl}ml water per ${vialMg||'?'}mg vial)</span></div>` : ''}
+            <div style="font-size:12px;color:${textMain};font-weight:600">${escHtml(pepName)}</div>
+            <div style="font-size:10.5px;color:${textMuted};font-family:'JetBrains Mono',monospace;margin-top:2px">🧪 ${escHtml(qtyTxt)}</div>
+            ${unitsTxt ? `<div style="font-size:10.5px;color:${accent};font-family:'JetBrains Mono',monospace;margin-top:1px">💉 ${escHtml(unitsTxt)}</div>
+            <div style="font-size:10.5px;color:${textMuted};font-family:'JetBrains Mono',monospace;margin-top:1px">${exportWaterMl}ml Bacteriostatic water per ${vialMg||'?'}mg of ${escHtml(pepName)}</div>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -9325,7 +9325,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.15.0';
+  const APP_VERSION = '1.15.1';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
