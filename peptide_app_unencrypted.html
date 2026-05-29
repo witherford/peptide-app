@@ -2136,6 +2136,21 @@ const PILL_COLORS = [
 ];
 
 function getColorById(id) { return PILL_COLORS.find(c => c.id === id) || PILL_COLORS[0]; }
+// Group peptides that share a needle via stackWith, using transitive (union-find)
+// connectivity so a chain A↔B↔C collapses into ONE group even without a direct
+// A↔C link. Returns an array of peptide-arrays. groupByStack(list).length is the
+// number of distinct needles for that set of peptides. Used for both the syringe
+// graphic and every needle-count surface so they always agree.
+function groupByStack(peptides) {
+  const byId = new Map(peptides.map(p => [p.id, p]));
+  const parent = new Map(peptides.map(p => [p.id, p.id]));
+  const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+  peptides.forEach(p => (p.stackWith || []).forEach(sid => { if (byId.has(sid)) union(p.id, sid); }));
+  const groups = new Map();
+  peptides.forEach(p => { const r = find(p.id); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(p); });
+  return [...groups.values()];
+}
 function nextColor(usedIds) {
   const idx = PILL_COLORS.findIndex(c => !usedIds.includes(c.id));
   return idx >= 0 ? PILL_COLORS[idx].id : PILL_COLORS[0].id;
@@ -2502,18 +2517,7 @@ function buildStackCard(stack) {
         return days.includes(d);
       });
       if (!inj.length) continue;
-      const placed = new Set();
-      let groupCount = 0;
-      inj.forEach(p => {
-        if (placed.has(p.id)) return;
-        placed.add(p.id);
-        (p.stackWith || []).forEach(sid => {
-          const sp = inj.find(op => op.id === sid);
-          if (sp) placed.add(sp.id);
-        });
-        groupCount++;
-      });
-      weekCount += groupCount;
+      weekCount += groupByStack(inj).length;
     }
     if (weekCount > perWeekPeakH) perWeekPeakH = weekCount;
   }
@@ -2722,18 +2726,7 @@ function buildStackCard(stack) {
             return days.includes(d);
           });
           if (!inj.length) continue;
-          const placed = new Set();
-          let groupCount = 0;
-          inj.forEach(p => {
-            if (placed.has(p.id)) return;
-            placed.add(p.id);
-            (p.stackWith || []).forEach(sid => {
-              const sp = inj.find(op => op.id === sid);
-              if (sp) placed.add(sp.id);
-            });
-            groupCount++;
-          });
-          exportTotalNeedles += groupCount;
+          exportTotalNeedles += groupByStack(inj).length;
         }
       }
       const totalPeptideVials = stack.peptides.reduce((s, p) => s + (p.vialQty || 1), 0);
@@ -2771,22 +2764,8 @@ function buildStackCard(stack) {
         : '';
 
       // "Draw Per Dose" syringe section --------------------------------------
-      // Group peptides by stackWith connectivity (transitive). Peptides sharing
-      // a needle render as one syringe with segmented coloured fill.
-      function buildInjectionGroups(peptides) {
-        const byId = new Map(peptides.map(p => [p.id, p]));
-        const parent = new Map(peptides.map(p => [p.id, p.id]));
-        const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
-        const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
-        peptides.forEach(p => (p.stackWith || []).forEach(sid => { if (byId.has(sid)) union(p.id, sid); }));
-        const groups = new Map();
-        peptides.forEach(p => {
-          const root = find(p.id);
-          if (!groups.has(root)) groups.set(root, []);
-          groups.get(root).push(p);
-        });
-        return [...groups.values()];
-      }
+      // Peptides sharing a needle (transitive stackWith) render as one syringe
+      // with segmented coloured fill — see the top-level groupByStack helper.
 
       // Insulin-syringe graphic built from divs (html2canvas-friendly — inline
       // SVG <text>/transforms rasterise unreliably). Fixed 0–100u (1ml) scale.
@@ -2828,7 +2807,7 @@ function buildStackCard(stack) {
       }
 
       const fmtU = u => u == null ? '?' : (Math.round(u * 10) / 10).toString().replace(/\.0$/, '');
-      const drawGroups = buildInjectionGroups(stack.peptides);
+      const drawGroups = groupByStack(stack.peptides);
       const syringeRows = drawGroups.map(group => {
         const segs = group.map(p => ({ units: unitsById.get(p.id), color: getColorById(p.color).bg, name: p.name }));
         const anyUnknown = segs.some(s => s.units == null);
@@ -3179,18 +3158,7 @@ function buildStackSummaryPanel(stack) {
         return days.includes(d);
       });
       if (!inj.length) continue;
-      const placed = new Set();
-      let groupCount = 0;
-      inj.forEach(p => {
-        if (placed.has(p.id)) return;
-        placed.add(p.id);
-        (p.stackWith || []).forEach(sid => {
-          const sp = inj.find(op => op.id === sid);
-          if (sp) placed.add(sp.id);
-        });
-        groupCount++;
-      });
-      weekCount += groupCount;
+      weekCount += groupByStack(inj).length;
     }
     if (weekCount > perWeekPeak) perWeekPeak = weekCount;
   }
@@ -3263,34 +3231,6 @@ function buildStackSummaryPanel(stack) {
 }
 
 
-function buildGrandTotalRowFromCatalogue(stack, allProds) {
-  const sym = currencySymbol();
-  const rate = fxRate();
-  let bestTotal = 0, hasBest = false;
-
-  stack.peptides.forEach(p => {
-    const vq = p.vialQty || 1;
-    const matches = catFindForPeptide(allProds, p.name);
-    if (!matches.length) return;
-    const best = matches.sort((a,b)=>(a.price??Infinity)-(b.price??Infinity))[0];
-    if (best.price != null) { bestTotal += best.price * vq; hasBest = true; }
-  });
-  if (stack.bacWater?.qty) {
-    const bacP = allProds.filter(p=>/bac|bacterio|water/i.test(p.name));
-    const bestBac = bacP.length ? bacP.sort((a,b)=>(a.price??Infinity)-(b.price??Infinity))[0] : null;
-    const mBV = (stack.bacWater.qty||'').match(/^(\d+)\s*(?:[×xX*]|vial)/);
-    if (bestBac?.price != null) { bestTotal += bestBac.price * (mBV ? parseInt(mBV[1]) : 1); hasBest = true; }
-  }
-
-  const fmtBest = hasBest ? sym + (bestTotal * rate).toFixed(rate >= 100 ? 0 : 2) : '—';
-
-  return `<tr class="total-row">
-    <td>Best price total</td>
-    <td></td>
-    <td class="r${hasBest ? ' win' : ''}" colspan="2">${fmtBest}</td>
-  </tr>`;
-}
-
 // ── Interactive per-week schedule editor ──
 const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
@@ -3324,9 +3264,9 @@ function peptideAllocatedMg(p, stack) {
   const dm = lengthStr.match(/(\d+(?:\.\d+)?)\s*day/i);
   const mm = lengthStr.match(/(\d+(?:\.\d+)?)\s*month/i);
   let weeks = 8;
-  if (wm) weeks = Math.min(Math.ceil(parseFloat(wm[1])), 52);
-  else if (dm) weeks = Math.min(Math.ceil(parseFloat(dm[1]) / 7), 52);
-  else if (mm) weeks = Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52);
+  if (wm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(wm[1])), 52));
+  else if (dm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1]) / 7), 52));
+  else if (mm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52));
 
   const defaultDoseAmt = parseFloat(p.doseAmount) || 0;
   const doseUnit = p.doseUnit || 'mcg';
@@ -3368,9 +3308,9 @@ function buildCombinedScheduleView(stack) {
   const wm = (stack.length || '').match(/(\d+(?:\.\d+)?)\s*week/i);
   const dm = (stack.length || '').match(/(\d+(?:\.\d+)?)\s*day/i);
   const mm = (stack.length || '').match(/(\d+(?:\.\d+)?)\s*month/i);
-  if (wm) weeks = Math.min(Math.ceil(parseFloat(wm[1])), 52);
-  else if (dm) weeks = Math.min(Math.ceil(parseFloat(dm[1]) / 7), 52);
-  else if (mm) weeks = Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52);
+  if (wm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(wm[1])), 52));
+  else if (dm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1]) / 7), 52));
+  else if (mm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52));
 
   const weekDays  = stack.weekDays  || {};
   const weekDoses = stack.weekDoses || {};
@@ -3480,9 +3420,9 @@ function buildScheduleGrid(stack) {
   const wm = (stack.length || '').match(/(\d+(?:\.\d+)?)\s*week/i);
   const dm = (stack.length || '').match(/(\d+(?:\.\d+)?)\s*day/i);
   const mm = (stack.length || '').match(/(\d+(?:\.\d+)?)\s*month/i);
-  if (wm) weeks = Math.min(Math.ceil(parseFloat(wm[1])), 52);
-  else if (dm) weeks = Math.min(Math.ceil(parseFloat(dm[1]) / 7), 52);
-  else if (mm) weeks = Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52);
+  if (wm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(wm[1])), 52));
+  else if (dm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1]) / 7), 52));
+  else if (mm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52));
 
   const weekDays = stack.weekDays || {};
   const colors   = stack.peptides.map(p => getColorById(p.color));
@@ -3668,9 +3608,9 @@ function wireScheduleGrid(card, stack) {
     const dm = (st.length||'').match(/(\d+(?:\.\d+)?)\s*day/i);
     const mm = (st.length||'').match(/(\d+(?:\.\d+)?)\s*month/i);
     let weeks = 8;
-    if (wm) weeks = Math.min(Math.ceil(parseFloat(wm[1])), 52);
-    else if (dm) weeks = Math.min(Math.ceil(parseFloat(dm[1])/7), 52);
-    else if (mm) weeks = Math.min(Math.ceil(parseFloat(mm[1])*4.33), 52);
+    if (wm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(wm[1])), 52));
+    else if (dm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1])/7), 52));
+    else if (mm) weeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1])*4.33), 52));
     const defaultDoseAmt = parseFloat(p.doseAmount) || 0;
     const doseUnit = p.doseUnit || 'mcg';
     let total = 0;
@@ -3704,9 +3644,9 @@ function wireScheduleGrid(card, stack) {
       const dm = (st.length||'').match(/(\d+(?:\.\d+)?)\s*day/i);
       const mm = (st.length||'').match(/(\d+(?:\.\d+)?)\s*month/i);
       let totalWeeks = 8;
-      if (wm) totalWeeks = Math.min(Math.ceil(parseFloat(wm[1])), 52);
-      else if (dm) totalWeeks = Math.min(Math.ceil(parseFloat(dm[1])/7), 52);
-      else if (mm) totalWeeks = Math.min(Math.ceil(parseFloat(mm[1])*4.33), 52);
+      if (wm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(wm[1])), 52));
+      else if (dm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1])/7), 52));
+      else if (mm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1])*4.33), 52));
       st.weekDays[peptideId] = {};
       for (let w2 = 0; w2 < totalWeeks; w2++) {
         st.weekDays[peptideId][w2] = [...(p?.days || [])];
@@ -3934,9 +3874,9 @@ function wireScheduleGrid(card, stack) {
       const dm = (st.length||'').match(/(\d+(?:\.\d+)?)\s*day/i);
       const mm = (st.length||'').match(/(\d+(?:\.\d+)?)\s*month/i);
       let totalWeeks = 8;
-      if (wm) totalWeeks = Math.min(Math.ceil(parseFloat(wm[1])), 52);
-      else if (dm) totalWeeks = Math.min(Math.ceil(parseFloat(dm[1])/7), 52);
-      else if (mm) totalWeeks = Math.min(Math.ceil(parseFloat(mm[1])*4.33), 52);
+      if (wm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(wm[1])), 52));
+      else if (dm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1])/7), 52));
+      else if (mm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1])*4.33), 52));
       if (!st.weekDays) st.weekDays = {};
       st.weekDays[peptideId] = {};
       for (let w = 0; w < totalWeeks; w++) st.weekDays[peptideId][w] = [];
@@ -4275,18 +4215,6 @@ function renderPeptideRows() {
       renderPeptideRows();
     });
   });
-}
-
-function calcScheduleLabel(days) {
-  if (!days || !days.length) return 'No days selected yet';
-  const names = days.map(d => WEEK_DAYS[d]);
-  const perWeek = days.length;
-  return `${names.join(', ')} — ${perWeek}× per week`;
-}
-
-function scheduleFromDays(days) {
-  if (!days || !days.length) return '';
-  return days.map(d => WEEK_DAYS[d]).join('+');
 }
 
 // ── Stacking section ──
@@ -5024,222 +4952,6 @@ function pbRenderModalSchedule() {
   });
 }
 
-// ════════════════════════════════════════════════════════════
-// STACK DURATION PANEL
-// Calculates how long the stack lasts based on vial quantities,
-// doses entered, injection days, and water per vial.
-// ════════════════════════════════════════════════════════════
-function pbRenderStackDurationPanel() {
-  const old = document.getElementById('pb-duration-panel');
-  if (old) old.remove();
-  if (!currentPeptideRows.length) return;
-
-  const mlPerVial = parseFloat(document.getElementById('sf-water-per-vial')?.value) || 2;
-  const sym = currencySymbol(), rate = fxRate();
-
-  // For each peptide, calculate how many days it will last
-  const _allProds = (typeof catAllProducts === 'function') ? catAllProducts() : [];
-  const rows = currentPeptideRows.map(p => {
-    const vialQty = p.vialQty || 1;
-    let catProd = p._catalogueProduct || catBestForPeptide(_allProds, p.name);
-    // Fuzzy fallback for renamed catalogue products (matches by stem + mg).
-    if (!catProd && typeof _pbBestPriceForRowName === 'function') {
-      catProd = _pbBestPriceForRowName(_allProds, p.name);
-    }
-    let vialMg = catProd?.capacity_mg || null;
-    // Last resort: parse the mg out of the row's own name.
-    if (vialMg == null) {
-      const mFromName = (p.name || '').match(/(\d+(?:\.\d+)?)\s*mg\b/i);
-      if (mFromName) vialMg = parseFloat(mFromName[1]);
-    }
-
-    // Total mg available across all vials
-    const totalMg = vialMg != null ? vialMg * vialQty : null;
-    const totalMcg = totalMg != null ? totalMg * 1000 : null;
-
-    // Dose per injection in mcg
-    let doseMcg = null;
-    const doseAmt = parseFloat(p.doseAmount);
-    if (!isNaN(doseAmt) && doseAmt > 0) {
-      if (p.doseUnit === 'mcg') doseMcg = doseAmt;
-      else if (p.doseUnit === 'mg')  doseMcg = doseAmt * 1000;
-      else if (p.doseUnit === 'ml')  {
-        // ml → mcg using concentration: vialMg*1000 / mlPerVial mcg/ml
-        if (vialMg) doseMcg = doseAmt * (vialMg * 1000 / mlPerVial);
-      }
-    }
-
-    // Injections per week
-    const injectionsPerWeek = (p.days || []).length || 0;
-
-    // Total injections possible from this batch
-    const totalInjections = (totalMcg != null && doseMcg != null && doseMcg > 0)
-      ? Math.floor(totalMcg / doseMcg) : null;
-
-    // Weeks / days this batch lasts
-    let durationWeeks = null, durationDays = null;
-    if (totalInjections != null && injectionsPerWeek > 0) {
-      durationWeeks = totalInjections / injectionsPerWeek;
-      durationDays  = Math.floor(durationWeeks * 7);
-    }
-
-    // Concentration (for reconstitution reference)
-    const concMcgPerMl = vialMg != null ? (vialMg * 1000) / mlPerVial : null;
-
-    // Units to draw on U-100 syringe: (dose_mcg / vial_mg * water_ml) / 10
-    const unitsToDraw = (doseMcg != null && vialMg != null)
-      ? (doseMcg / (vialMg * 1000) * mlPerVial * 100).toFixed(1) : null;
-
-    return { p, vialQty, vialMg, totalMg, totalMcg, doseMcg, injectionsPerWeek, totalInjections, durationWeeks, durationDays, concMcgPerMl, unitsToDraw };
-  });
-
-  // Find the limiting peptide (shortest duration) to define overall stack duration
-  const withDuration = rows.filter(r => r.durationWeeks != null);
-  const limitingRow  = withDuration.length ? withDuration.reduce((a,b) => a.durationWeeks < b.durationWeeks ? a : b) : null;
-
-  // Bac water duration
-  const bacQtyStr = document.getElementById('sf-bac-qty')?.value || '';
-  let bacTotalMl = 0;
-  const mBac = bacQtyStr.match(/(\d+)\s*[×x]\s*(\d+(?:\.\d+)?)\s*ml/i);
-  if (mBac) bacTotalMl = parseInt(mBac[1]) * parseFloat(mBac[2]);
-  else { const ms = bacQtyStr.match(/(\d+(?:\.\d+)?)\s*ml/i); if (ms) bacTotalMl = parseFloat(ms[1]); }
-  const totalPeptideVials = rows.reduce((s,r) => s + r.vialQty, 0);
-  const neededBacMl = totalPeptideVials * mlPerVial;
-  const bacSufficient = bacTotalMl >= neededBacMl;
-
-  // Price summary from catalogue
-  let grandPeptidePrice = 0, hasGrandPrice = false;
-  const allProds = typeof catAllProducts==='function' ? catAllProducts() : [];
-  rows.forEach(r => {
-    const best = catBestForPeptide(allProds, r.p.name);
-    if (best?.price != null) { grandPeptidePrice += best.price * r.vialQty; hasGrandPrice = true; }
-  });
-  // Add bac water cost
-  const bacProds = allProds.filter(p => /bac|bacterio|water/i.test(p.name));
-  const bestBac  = bacProds.length ? bacProds.reduce((a,b)=>(a.price??Infinity)<=(b.price??Infinity)?a:b) : null;
-  const bacVialQty = parseInt(document.getElementById('sf-bac-vial-qty')?.value||'1')||1;
-  let bacTotalCost = 0;
-  if (bestBac?.price != null) { bacTotalCost = bestBac.price * bacVialQty; hasGrandPrice = true; }
-
-  const grandTotal = (grandPeptidePrice + bacTotalCost) * rate;
-
-  const panel = document.createElement('div');
-  panel.id = 'pb-duration-panel';
-  panel.style.cssText = 'margin-bottom:12px;margin-top:4px;';
-
-  const limitWeeksStr = limitingRow
-    ? (limitingRow.durationWeeks >= 1
-        ? limitingRow.durationWeeks.toFixed(1).replace(/\.0$/,'') + ' weeks'
-        : limitingRow.durationDays + ' days')
-    : null;
-
-  let html = `
-    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden">
-      <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)">📅 Stack Duration & Reconstitution</div>
-        ${limitWeeksStr ? `<div style="font-size:12px;color:var(--text2)">Stack lasts: <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:var(--green)">${escHtml(limitWeeksStr)}</span></div>` : ''}
-      </div>
-      <div style="padding:0 12px">`;
-
-  rows.forEach(r => {
-    const hasDose = r.doseMcg != null;
-    const hasDur  = r.durationWeeks != null;
-    const isLimiting = limitingRow && r.p.id === limitingRow.p.id && withDuration.length > 1;
-    const col = getColorById(r.p.color);
-
-    const doseDisp = hasDose
-      ? (r.p.doseAmount + ' ' + r.p.doseUnit + ' / injection')
-      : '<span style="color:var(--text3)">Enter dose above ↑</span>';
-
-    const durDisp = hasDur
-      ? (r.durationWeeks >= 1
-          ? r.durationWeeks.toFixed(1).replace(/\.0$/,'') + ' weeks'
-          : r.durationDays + ' days')
-      : '—';
-
-    const injStr = r.injectionsPerWeek > 0
-      ? r.injectionsPerWeek + '× / week'
-      : '<span style="color:var(--amber)">No days selected</span>';
-
-    const totalMgStr = r.totalMg != null ? r.totalMg + 'mg total' : '';
-    const totalInjStr = r.totalInjections != null ? r.totalInjections + ' injections' : '';
-    const concStr = r.concMcgPerMl != null ? r.concMcgPerMl.toFixed(0) + ' mcg/ml conc.' : '';
-    const unitsStr = r.unitsToDraw != null ? r.unitsToDraw + ' units to draw' : '';
-
-    // Quantity / total-mg summary line shown directly under the peptide name,
-    // mirroring how the bacteriostatic-water row presents its vial summary.
-    const totalPeptideMg = (r.vialMg != null && r.vialQty != null) ? (r.vialMg * r.vialQty) : null;
-    const qtySummary = `${r.vialQty} vial${r.vialQty===1?'':'s'}` + (totalPeptideMg != null ? ` · ${totalPeptideMg}mg total` : '');
-
-    html += `
-      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col.bg};flex-shrink:0"></span>
-          <span style="font-size:12px;font-weight:600;flex:1">${escHtml(r.p.name)}</span>
-          ${isLimiting ? `<span style="font-size:9px;background:var(--amber-bg);color:var(--amber);border:1px solid rgba(239,159,39,0.3);border-radius:20px;padding:1px 7px">⚡ Limiting</span>` : ''}
-          <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:${hasDur?'var(--green)':'var(--text3)'}">
-            ${escHtml(durDisp)}
-          </span>
-        </div>
-        <div style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;margin:0 0 6px 16px">📦 ${escHtml(qtySummary)}</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:4px">
-          <div style="font-size:10.5px;color:var(--text2)">💉 ${hasDose ? escHtml(doseDisp) : doseDisp}</div>
-          <div style="font-size:10.5px;color:var(--text2)">📅 ${injStr}</div>
-          ${concStr ? `<div style="font-size:10.5px;color:var(--text2)">🧪 ${escHtml(concStr)}</div>` : ''}
-          ${unitsStr ? `<div style="font-size:10.5px;color:var(--blue);font-weight:600">🔬 ${escHtml(unitsStr)}</div>` : ''}
-          ${totalInjStr ? `<div style="font-size:10px;color:var(--text3)">${escHtml(totalInjStr)}</div>` : ''}
-        </div>
-      </div>`;
-  });
-
-  // Bac water row
-  if (neededBacMl > 0 || bacTotalMl > 0) {
-    const bacOk = bacSufficient && bacTotalMl > 0;
-    html += `
-      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:12px;font-weight:600;flex:1">💧 Bacteriostatic Water</span>
-          <span style="font-size:11px;color:${bacOk?'var(--green)':'var(--amber)'}">
-            ${bacTotalMl > 0 ? bacTotalMl+'ml available' : '—'}
-          </span>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:4px;margin-top:4px">
-          <div style="font-size:10.5px;color:var(--text2)">📦 ${escHtml(bacVialQty + ' vial' + (bacVialQty>1?'s':''))}</div>
-          <div style="font-size:10.5px;color:var(--text2)">🔬 ${escHtml(mlPerVial+'ml per peptide vial')}</div>
-          <div style="font-size:10.5px;color:${neededBacMl > bacTotalMl && bacTotalMl > 0 ? 'var(--red)' : 'var(--text2)'}">
-            Need: ${escHtml(neededBacMl+'ml')} (${escHtml(totalPeptideVials+' vial'+(totalPeptideVials>1?'s':''))} × ${mlPerVial}ml)
-          </div>
-        </div>
-      </div>`;
-  }
-
-  // Grand total cost row
-  if (hasGrandPrice) {
-    html += `
-      <div style="padding:10px 0;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <span style="font-size:11px;font-weight:600;color:var(--text2)">Total stack cost (best prices)</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:var(--green)">${sym}${grandTotal.toFixed(rate>=100?0:2)}</span>
-      </div>`;
-  }
-
-  html += `</div></div>`;
-  // Auto-fill protocol length if blank
-  const _sfLenNum = document.getElementById('sf-length-num');
-  if (_sfLenNum && !_sfLenNum.value.trim() && limitWeeksStr) {
-    setLengthFields(limitWeeksStr);
-    // Re-render schedule so new length is reflected immediately
-    clearTimeout(window._pbScheduleTimer);
-    window._pbScheduleTimer = setTimeout(pbRenderModalSchedule, 80);
-  }
-  panel.innerHTML = html;
-
-  // Insert above the price panel (or above url-section if no price panel)
-  const pricePanel = document.getElementById('pb-price-panel');
-  const urlSection = document.querySelector('#stackModal .url-section');
-  const anchor = pricePanel || urlSection;
-  if (anchor) anchor.parentNode.insertBefore(panel, anchor);
-  else { const fa = document.querySelector('#stackModal .form-actions'); if (fa) fa.parentNode.insertBefore(panel, fa); }
-}
 
 function updateWaterWarning() {
   const warn   = document.getElementById('sf-water-warning');
@@ -5337,19 +5049,8 @@ function updateNeedleSummary() {
     for (let d = 0; d < 7; d++) {
       const injectingOnThisDay = currentPeptideRows.filter(p => peptideActiveDaysForWeek(p, w).includes(d));
       if (!injectingOnThisDay.length) continue;
-      // Union-find: group peptides that share a needle via stackWith.
-      const placed = new Set();
-      const groups = [];
-      injectingOnThisDay.forEach(p => {
-        if (placed.has(p.id)) return;
-        const group = [p];
-        placed.add(p.id);
-        (p.stackWith || []).forEach(sid => {
-          const sp = injectingOnThisDay.find(op => op.id === sid);
-          if (sp && !placed.has(sp.id)) { group.push(sp); placed.add(sp.id); }
-        });
-        groups.push(group);
-      });
+      // Transitive grouping: peptides sharing a needle via stackWith.
+      const groups = groupByStack(injectingOnThisDay);
       totalNeedles += groups.length;
       perDayCount[d] += groups.length;
       weekCount += groups.length;
@@ -7571,14 +7272,6 @@ async function fetchWithTimeout(url, opts, ms) {
   }
 }
 
-// Legacy shim so existing call-sites still work
-function abortAfter(ms) {
-  const ctrl = makeAbortCtrl(ms);
-  // Schedule clear on next tick so callers that finish quickly don't leak the timer
-  // (best-effort — the timeout is short enough it doesn't matter)
-  return ctrl.signal;
-}
-
 // ── State ──
 let catDynamic  = [];   // live from worker
 let catSearchQuery  = '';
@@ -8352,11 +8045,11 @@ document.getElementById('productModalSave').addEventListener('click', async () =
   const qty  = document.getElementById('ap-qty-val').value.trim();
   const unit = document.getElementById('ap-qty-unit').value;
   if (!name) { showToast('Please enter a product name'); return; }
-  const mgMatch = name.match(/(\d+)\s*mg/i);
+  const mgMatch = name.match(/(\d+(?:\.\d+)?)\s*mg\b/i);
   const product = {
     id: editingManualId || uid(),
     name, qty, unit,
-    capacity_mg: mgMatch ? parseInt(mgMatch[1]) : (qty ? parseFloat(qty) : null),
+    capacity_mg: mgMatch ? parseFloat(mgMatch[1]) : (qty ? parseFloat(qty) : null),
     retailers: currentRetailerRows.filter(r => r.name || r.url),
     dataType: 'manual',
   };
@@ -8587,8 +8280,8 @@ document.getElementById('importConfirmBtn').addEventListener('click', () => {
     const p=importScannedProducts[idx];
     if(!p||existingUrls.has(p.url)){skipped++;return;}
     const rid=uid();
-    const mgMatch=p.name.match(/(\d+)\s*mg/i);
-    const product={id:uid(),name:p.name,qty:p.qty||'',unit:p.unit||'mg',capacity_mg:mgMatch?parseInt(mgMatch[1]):(p.qty?parseFloat(p.qty):null),dataType:'manual',
+    const mgMatch=p.name.match(/(\d+(?:\.\d+)?)\s*mg\b/i);
+    const product={id:uid(),name:p.name,qty:p.qty||'',unit:p.unit||'mg',capacity_mg:mgMatch?parseFloat(mgMatch[1]):(p.qty?parseFloat(p.qty):null),dataType:'manual',
       retailers:[{id:rid,name:p.retailerName||'',url:p.url,manualPrice:p.price||'',manualCurrency:'GBP'}]};
     if(!APP.manualFetchData) APP.manualFetchData={};
     APP.manualFetchData[product.id]={[rid]:{price:p.price||null,stockStatus:p.stockStatus||'unknown',stockQty:p.stockQty||null,ts:Date.now(),error:null}};
@@ -9154,145 +8847,6 @@ function pbCommitCartToStack() {
   if (msgs.length) showToast('✓ '+msgs.join(', '));
 }
 
-// ════════════════════════════════════════════════════════════
-// STACK PRICE PANEL — live supplier cost comparison in edit modal
-// ════════════════════════════════════════════════════════════
-function pbRenderStackPricePanel() {
-  const old = document.getElementById('pb-price-panel');
-  if (old) old.remove();
-  if (!currentPeptideRows.length) return;
-
-  const sym = currencySymbol(), rate = fxRate();
-  const allProds = typeof catAllProducts==='function' ? catAllProducts() : [];
-
-  const peptideData = currentPeptideRows.map(p => {
-    const variants = catFindForPeptide(allProds, p.name).map(cp => ({
-      product: cp,
-      supplierLabel: cp.source==='uk-peptides'?'UK Peptides':cp.source==='anglo-peptides'?'Anglo Peptides':(cp._raw?.retailers?.[0]?.name||'Manual'),
-    })).sort((a,b)=>(a.product.price??Infinity)-(b.product.price??Infinity));
-
-    const qtyNum = p.vialQty || (()=>{ const m=(p.retailerA?.qty||'').match(/(\d+)\s*[×x]/); return m?parseInt(m[1]):1; })();
-    return { peptide:p, variants, qtyNum };
-  });
-
-  // Best-of-breed and single-supplier totals
-  let bestTotal=0, bestOk=true;
-  const supplierTotals={};
-  const supplierCoverage={};
-  const totalPeptides=peptideData.length;
-
-  peptideData.forEach(({variants, qtyNum})=>{
-    if (!variants.length) { bestOk=false; return; }
-    const cheapest=variants[0];
-    if (cheapest.product.price!=null) bestTotal+=cheapest.product.price*qtyNum;
-    else bestOk=false;
-
-    variants.forEach(({product:cp, supplierLabel:sl})=>{
-      if (cp.price!=null) {
-        if (!supplierTotals[sl]) supplierTotals[sl]={total:0};
-        supplierTotals[sl].total += cp.price*qtyNum;
-      }
-      if (!supplierCoverage[sl]) supplierCoverage[sl]=0;
-    });
-    const covered = new Set(variants.map(v=>v.supplierLabel));
-    covered.forEach(sl=>{ supplierCoverage[sl]=(supplierCoverage[sl]||0)+1; });
-  });
-
-  const supEntries = Object.entries(supplierTotals).sort((a,b)=>a[1].total-b[1].total);
-  const lowestSingleTotal = supEntries[0]?.[1]?.total;
-
-  const panel = document.createElement('div');
-  panel.id = 'pb-price-panel';
-  panel.style.cssText='margin-bottom:12px;margin-top:4px;';
-
-  let html = `
-    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden">
-      <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)">💰 Stack Price Estimate</div>
-        ${bestOk&&bestTotal>0?`<div style="font-size:12px;color:var(--text2)">Best possible: <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:var(--green)">${sym}${(bestTotal*rate).toFixed(rate>=100?0:2)}</span></div>`:''}
-      </div>`;
-
-  // Per-peptide breakdown
-  const hasVariants = peptideData.some(d=>d.variants.length>0);
-  if (hasVariants) {
-    html+=`<div style="padding:0 12px">`;
-    peptideData.forEach(({peptide:p, variants, qtyNum})=>{
-      if (!variants.length) return;
-      const cheapestP = variants[0]?.product?.price;
-      html+=`
-        <div style="padding:8px 0;border-bottom:1px solid var(--border)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-            <span style="font-size:12px;font-weight:600">${escHtml(p.name)}</span>
-            <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">${escHtml(p.retailerA?.qty||'qty ?')}</span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:3px">`;
-      variants.forEach(({product:cp, supplierLabel:sl})=>{
-        const pn = cp.price!=null?cp.price*rate:null;
-        const line = pn!=null?pn*qtyNum:null;
-        const isBest = cp.price===cheapestP&&cheapestP!=null;
-        const diff = (!isBest&&cheapestP!=null&&cp.price!=null)
-          ? `<span style="font-size:9.5px;color:var(--red)">+${sym}${((cp.price-cheapestP)*rate*qtyNum).toFixed(rate>=100?0:2)}</span>` : '';
-        html+=`
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px">
-            <span style="width:5px;height:5px;border-radius:50%;background:${isBest?'var(--green)':'var(--border3)'};flex-shrink:0"></span>
-            <span style="flex:1;color:${isBest?'var(--text)':'var(--text2)'};font-weight:${isBest?'600':'400'}">${escHtml(sl)}</span>
-            ${cp.url?`<a href="${escHtml(cp.url)}" target="_blank" rel="noopener" style="font-size:9px;color:var(--blue);text-decoration:none">↗</a>`:''}
-            <span style="font-family:'JetBrains Mono',monospace;font-weight:${isBest?700:400};color:${isBest?'var(--green)':'var(--text2)'}">
-              ${line!=null?sym+line.toFixed(rate>=100?0:2):'—'}
-            </span>
-            ${diff}
-            ${isBest&&variants.length>1?`<span style="font-size:9px;color:var(--green)">✓</span>`:''}
-          </div>`;
-      });
-      html+=`</div></div>`;
-    });
-    html+=`</div>`;
-  }
-
-  // Single-supplier totals comparison
-  if (supEntries.length>1) {
-    html+=`
-      <div style="padding:10px 12px;background:var(--bg4);border-top:1px solid var(--border)">
-        <div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:7px;letter-spacing:0.05em;text-transform:uppercase">Buy-all-from-one comparison:</div>
-        <div style="display:flex;flex-direction:column;gap:5px">`;
-    supEntries.forEach(([sl,data],idx)=>{
-      const isChp=idx===0;
-      const cov=supplierCoverage[sl]||0;
-      const saving = !isChp&&lowestSingleTotal!=null ? `<span style="font-size:9.5px;color:var(--red)">+${sym}${((data.total-lowestSingleTotal)*rate).toFixed(rate>=100?0:2)}</span>` : '';
-      html+=`
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:11px;flex:1;font-weight:${isChp?600:400};color:${isChp?'var(--text)':'var(--text2)'}">${escHtml(sl)}</span>
-          ${cov<totalPeptides?`<span style="font-size:9.5px;color:var(--amber)">${cov}/${totalPeptides} items</span>`:''}
-          <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:${isChp?'var(--green)':'var(--text2)'}">
-            ${sym}${(data.total*rate).toFixed(rate>=100?0:2)}
-          </span>
-          ${saving}
-          ${isChp&&supEntries.length>1?`<span style="font-size:9px;background:var(--green-bg);color:var(--green);border:1px solid rgba(93,202,165,0.25);border-radius:20px;padding:1px 6px">Cheapest</span>`:''}
-        </div>`;
-    });
-
-    // Mix-and-match vs single cheapest
-    if (bestOk&&bestTotal>0&&lowestSingleTotal!=null) {
-      const saving=lowestSingleTotal-bestTotal;
-      if (saving>0.01) {
-        html+=`
-          <div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--border2);display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;flex:1;color:var(--text2)">🏆 Mix &amp; match</span>
-            <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--green)">${sym}${(bestTotal*rate).toFixed(rate>=100?0:2)}</span>
-            <span style="font-size:9.5px;color:var(--green)">saves ${sym}${(saving*rate).toFixed(rate>=100?0:2)}</span>
-          </div>`;
-      }
-    }
-    html+=`</div></div>`;
-  }
-
-  html+=`</div>`;
-  panel.innerHTML=html;
-
-  const urlSection = document.querySelector('#stackModal .url-section');
-  if (urlSection) urlSection.parentNode.insertBefore(panel, urlSection);
-  else { const fa=document.querySelector('#stackModal .form-actions'); if(fa) fa.parentNode.insertBefore(panel,fa); }
-}
 
 // ── Wire up: replace original picker button ──
 (function pbWireUp() {
@@ -9676,7 +9230,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.14.0';
+  const APP_VERSION = '1.14.1';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
