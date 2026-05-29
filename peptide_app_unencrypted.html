@@ -1103,10 +1103,26 @@
       </div>
     </div>
 
+    <!-- Toolbar row 4b: peptide-name filter (shown once a category is selected) -->
+    <div id="catPeptideRow" style="display:none;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+      <span style="font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);white-space:nowrap;">Peptide</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap" id="catPeptideFilters">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
     <!-- Toolbar row 5: size filters -->
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
       <span style="font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);white-space:nowrap;">Size</span>
       <div style="display:flex;gap:4px;flex-wrap:wrap" id="catSizeFilters">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- Toolbar row 6: blend visibility toggle -->
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+      <span style="font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);white-space:nowrap;">Blends</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap" id="catBlendFilter">
         <!-- populated by JS -->
       </div>
     </div>
@@ -2505,11 +2521,10 @@ function buildStackCard(stack) {
   if (wmH) totalWeeksH = Math.max(1, Math.min(Math.ceil(parseFloat(wmH[1])), 52));
   else if (dmH) totalWeeksH = Math.max(1, Math.min(Math.ceil(parseFloat(dmH[1])/7), 52));
   else if (mmH) totalWeeksH = Math.max(1, Math.min(Math.ceil(parseFloat(mmH[1]) * 4.33), 52));
-  // Find the per-week peak (highest-injection week), then totalNeedles =
-  // peak × weeks so the math is consistent with the in-modal needle estimate.
-  let perWeekPeakH = 0;
+  // Total needles = the true sum across every week (accounts for shared needles
+  // via groupByStack AND lighter/heavier weeks), not peak × weeks.
+  let totalNeedlesH = 0;
   for (let w = 0; w < totalWeeksH; w++) {
-    let weekCount = 0;
     for (let d = 0; d < 7; d++) {
       const inj = stack.peptides.filter(p => {
         const wd = stack.weekDays?.[p.id]?.[w];
@@ -2517,11 +2532,9 @@ function buildStackCard(stack) {
         return days.includes(d);
       });
       if (!inj.length) continue;
-      weekCount += groupByStack(inj).length;
+      totalNeedlesH += groupByStack(inj).length;
     }
-    if (weekCount > perWeekPeakH) perWeekPeakH = weekCount;
   }
-  let totalNeedlesH = perWeekPeakH * totalWeeksH;
   if (!totalNeedlesH) totalNeedlesH = null;
   const needleBadge = totalNeedlesH
     ? `<span style="font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:1px 8px">💉 ${totalNeedlesH} needles</span>`
@@ -3146,11 +3159,10 @@ function buildStackSummaryPanel(stack) {
   else if (dm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(dm[1])/7), 52));
   else if (mm) totalWeeks = Math.max(1, Math.min(Math.ceil(parseFloat(mm[1]) * 4.33), 52));
 
-  // Find the per-week peak (busiest week), then total = peak × weeks so the
-  // displayed math is consistent: "X / week × N weeks = Y total".
-  let perWeekPeak = 0;
+  // Total needles = the true sum across every week (shared needles via
+  // groupByStack, and lighter weeks counted as they actually are).
+  let totalNeedles = 0;
   for (let w = 0; w < totalWeeks; w++) {
-    let weekCount = 0;
     for (let d = 0; d < 7; d++) {
       const inj = stack.peptides.filter(p => {
         const wd = stack.weekDays?.[p.id]?.[w];
@@ -3158,11 +3170,9 @@ function buildStackSummaryPanel(stack) {
         return days.includes(d);
       });
       if (!inj.length) continue;
-      weekCount += groupByStack(inj).length;
+      totalNeedles += groupByStack(inj).length;
     }
-    if (weekCount > perWeekPeak) perWeekPeak = weekCount;
   }
-  let totalNeedles = perWeekPeak * totalWeeks;
   if (!totalNeedles) totalNeedles = null;
 
   // Water requirement check — total ml needed = (peptide vial count) × (ml per peptide vial)
@@ -4101,13 +4111,21 @@ function renderPeptideRows() {
     const doseAmt  = p.doseAmount || '';
     const doseUnit = p.doseUnit || 'mcg';
 
-    // Price info for this peptide from catalogue
-    const catProd = p._catalogueProduct || (typeof catAllProducts==='function' ? catBestForPeptide(catAllProducts(), p.name) : null);
+    // Price + size for this peptide from catalogue. Use the fuzzy stem matcher
+    // so a row whose name embeds a size (e.g. "BPC-157 5mg") still resolves; fall
+    // back to any catalogue match for size, then to the mg parsed from the name,
+    // so BOTH price and size always show when derivable.
+    const _allProdsRow = (typeof catAllProducts==='function') ? catAllProducts() : [];
+    const catProd = p._catalogueProduct
+      || (typeof _pbBestPriceForRowName==='function' ? _pbBestPriceForRowName(_allProdsRow, p.name) : null);
+    const catSizeProd = catProd || (typeof catBestForPeptide==='function' ? catBestForPeptide(_allProdsRow, p.name) : null);
     const vialQty = p.vialQty || 1;
     const sym2 = currencySymbol(), rate2 = fxRate();
     const unitPriceNum = catProd?.price != null ? catProd.price * rate2 : null;
     const linePrice = unitPriceNum != null ? sym2 + (unitPriceNum * vialQty).toFixed(rate2>=100?0:2) : null;
-    const vialSize = catProd?.capacity_mg ? catProd.capacity_mg + 'mg' : (p.retailerA?.qty ? p.retailerA.qty.replace(/\d+\s*[×x]\s*/,'').trim() : '');
+    let _rowMg = catSizeProd?.capacity_mg || null;
+    if (_rowMg == null && p.name) { const _m = p.name.match(/(\d+(?:\.\d+)?)\s*mg\b/i); if (_m) _rowMg = parseFloat(_m[1]); }
+    const vialSize = _rowMg != null ? _rowMg + 'mg' : (p.retailerA?.qty ? p.retailerA.qty.replace(/\d+\s*[×x]\s*/,'').trim() : '');
 
     row.innerHTML = `
       <div class="peptide-row-header">
@@ -4167,7 +4185,10 @@ function renderPeptideRows() {
         // Update qty label and line price live
         const sym2 = currencySymbol(), rate2 = fxRate();
         const p = currentPeptideRows[idx];
-        const catProd2 = p._catalogueProduct || (typeof catAllProducts==='function' ? catBestForPeptide(catAllProducts(), p.name) : null);
+        const _allProds2 = (typeof catAllProducts==='function') ? catAllProducts() : [];
+        const catProd2 = p._catalogueProduct
+          || (typeof _pbBestPriceForRowName==='function' ? _pbBestPriceForRowName(_allProds2, p.name) : null)
+          || (typeof catBestForPeptide==='function' ? catBestForPeptide(_allProds2, p.name) : null);
         const unitP = catProd2?.price != null ? catProd2.price * rate2 : null;
         const priceEl = document.getElementById('sf-peptide-price-' + idx);
         const lblEls = container.querySelectorAll('.sf-qty-label-' + idx);
@@ -5059,18 +5080,16 @@ function updateNeedleSummary() {
     perWeekCounts.push(weekCount);
   }
 
-  // Per-week display: always a single integer — the highest-injection week
-  // in the protocol. Picking the max means the user buys enough needles to
-  // cover their busiest week.
-  // Total: derived as perWeek × weeks so the simple mental math
-  // "X needles/week × N weeks = Y total" always holds. This intentionally
-  // overstates slightly when the schedule has lighter weeks — needles are
-  // cheap and the buffer prevents running out mid-protocol.
+  // Per-week display: the busiest (highest-injection) week, so the user knows
+  // their peak weekly needle use. Total: the TRUE sum across every week —
+  // shared needles are collapsed via groupByStack and lighter weeks count as
+  // they actually are (no peak × weeks overstatement).
   // The "Stacking (Shared Needle)" checkbox influences both numbers
   // naturally: toggling it on clears stackWith on every peptide, which
   // causes the calc to count groups separately on subsequent re-runs.
   const perWeekDisplay = perWeekCounts.length ? Math.max(...perWeekCounts) : 0;
-  const estTotal = perWeekDisplay * weeks;
+  const estTotal = totalNeedles;
+  const weeksVary = perWeekCounts.length > 1 && Math.min(...perWeekCounts) !== perWeekDisplay;
 
   const _existNeedle = document.getElementById('sf-needle-summary');
   if (_existNeedle) _existNeedle.remove();
@@ -5080,7 +5099,7 @@ function updateNeedleSummary() {
   summaryEl.innerHTML = `
     <div class="needle-summary-title">💉 Needle Estimate (per ${weeks}-week protocol)</div>
     <div class="needle-total">
-      <span>Per week</span><span>${perWeekDisplay}</span>
+      <span>${weeksVary ? 'Busiest week' : 'Per week'}</span><span>${perWeekDisplay}</span>
     </div>
     <div class="needle-total">
       <span>${weeks} week${weeks===1?'':'s'} total</span><span>${estTotal}</span>
@@ -7279,6 +7298,8 @@ let catActiveSource = 'all';
 let catSortOrder    = 'name-asc';
 let catActiveCategory = 'all';
 let catActiveSize = 'all';
+let catActivePeptide = 'all';   // base peptide name filter (within a category)
+let catShowBlends = true;       // show/hide multi-peptide blend products
 
 // Map peptide names to library categories + colors
 function catMatchLibrary(productName) {
@@ -7288,6 +7309,26 @@ function catMatchLibrary(productName) {
     if (nl.includes(p.name.toLowerCase())) return { type: p.type, color: p.typeColor };
   }
   return null;
+}
+
+// Is this product a multi-peptide blend/combo? (no explicit flag — detected by name)
+function catIsBlend(name) { return /\+|\bblend\b|\bcombo\b/i.test(name || ''); }
+
+// Clean base peptide name for the peptide-name filter. Prefers the longest
+// matching PEPTIDE_LIBRARY entry (so "BPC-157 + TB-500 Blend" resolves to the
+// blend entry, not a shorter sub-name), else falls back to the size-stripped name.
+function catPeptideName(p) {
+  const name = (p && p.name) || '';
+  if (typeof PEPTIDE_LIBRARY !== 'undefined') {
+    const nl = name.toLowerCase();
+    let best = null;
+    for (const lib of PEPTIDE_LIBRARY) {
+      const ln = lib.name.toLowerCase();
+      if (nl.includes(ln) && (!best || ln.length > best.length)) best = lib.name;
+    }
+    if (best) return best;
+  }
+  return name.replace(/[\s\-–—]+\d+(?:\.\d+)?\s*(mcg|mg|iu|ml)\s*$/i, '').trim() || name;
 }
 
 
@@ -7575,8 +7616,10 @@ function catBestForPeptide(prods, peptideName) {
 }
 
 // ── Filter + sort ──
-function catGetVisible() {
-  let list = catAllProducts();
+// Apply every active filter. `includePeptide:false` skips only the peptide-name
+// filter, so catRender can derive the peptide chip options scoped to the other
+// filters (category, size, blends, …) before the user narrows to one peptide.
+function catApplyFilters(list, { includePeptide = true } = {}) {
   if (catActiveSource !== 'all') {
     if (catActiveSource === 'manual') list = list.filter(p => p.dataType === 'manual');
     else list = list.filter(p => p.source === catActiveSource);
@@ -7593,8 +7636,13 @@ function catGetVisible() {
     const sz = parseFloat(catActiveSize);
     list = list.filter(p => p.capacity_mg == sz);
   }
+  if (!catShowBlends) list = list.filter(p => !catIsBlend(p.name));
+  if (includePeptide && catActivePeptide !== 'all') list = list.filter(p => catPeptideName(p) === catActivePeptide);
   if (catSearchQuery) list = list.filter(p => (p.name||'').toLowerCase().includes(catSearchQuery));
-  return list.slice().sort((a,b) => {
+  return list;
+}
+function catGetVisible() {
+  return catApplyFilters(catAllProducts()).slice().sort((a,b) => {
     if (catSortOrder==='name-asc')  return (a.name||'').localeCompare(b.name||'');
     if (catSortOrder==='name-desc') return (b.name||'').localeCompare(a.name||'');
     if (catSortOrder==='price-asc') return (a.price!=null?a.price:Infinity)-(b.price!=null?b.price:Infinity);
@@ -7631,6 +7679,53 @@ function catRender() {
     catCatEl.querySelectorAll('[data-cat-category]').forEach(btn => {
       btn.addEventListener('click', function() {
         catActiveCategory = this.dataset.catCategory;
+        catActivePeptide = 'all';   // peptide options are scoped to the category
+        catRender();
+      });
+    });
+  }
+
+  // Populate the peptide-name sub-filter — only meaningful once a category is
+  // chosen, scoped to the peptides present under the current filters.
+  const catPepRow = document.getElementById('catPeptideRow');
+  const catPepEl = document.getElementById('catPeptideFilters');
+  if (catPepRow && catPepEl) {
+    if (catActiveCategory === 'all' || catActiveCategory === '__bac__') {
+      catPepRow.style.display = 'none';
+      catActivePeptide = 'all';
+    } else {
+      const scoped = catApplyFilters(catAllProducts(), { includePeptide: false })
+        .filter(p => !/bac|bacterio|water/i.test(p.name));
+      const names = [...new Set(scoped.map(catPeptideName))].sort((a,b) => a.localeCompare(b));
+      if (catActivePeptide !== 'all' && !names.includes(catActivePeptide)) catActivePeptide = 'all';
+      if (names.length) {
+        catPepRow.style.display = 'flex';
+        const pchips = [{ v:'all', l:'All' }, ...names.map(n => ({ v:n, l:n }))];
+        catPepEl.innerHTML = pchips.map(c => {
+          const isActive = catActivePeptide === c.v;
+          return `<button class="lib-filter-chip${isActive?' active':''}" data-cat-peptide="${escHtml(c.v)}">${escHtml(c.l)}</button>`;
+        }).join('');
+        catPepEl.querySelectorAll('[data-cat-peptide]').forEach(btn => {
+          btn.addEventListener('click', function() {
+            catActivePeptide = this.dataset.catPeptide;
+            catRender();
+          });
+        });
+      } else {
+        catPepRow.style.display = 'none';
+      }
+    }
+  }
+
+  // Populate the blend show/hide toggle chip.
+  const catBlendEl = document.getElementById('catBlendFilter');
+  if (catBlendEl) {
+    catBlendEl.innerHTML =
+      `<button class="lib-filter-chip${catShowBlends?' active':''}" data-cat-blend="show">Show</button>` +
+      `<button class="lib-filter-chip${catShowBlends?'':' active'}" data-cat-blend="hide">Hide</button>`;
+    catBlendEl.querySelectorAll('[data-cat-blend]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        catShowBlends = this.dataset.catBlend === 'show';
         catRender();
       });
     });
@@ -9230,7 +9325,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.14.1';
+  const APP_VERSION = '1.15.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
