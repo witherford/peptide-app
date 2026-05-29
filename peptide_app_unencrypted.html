@@ -3318,7 +3318,7 @@ function buildStackSummaryPanel(stack) {
           ${stack.length ? `
             <div>
               <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:3px">Duration</div>
-              <div style="font-size:15px;font-weight:700;color:var(--text);font-family:'JetBrains Mono',monospace">${escHtml(stack.length)}</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text);font-family:'JetBrains Mono',monospace">${escHtml(durationLabel(stack, weeksFromLength(stack.length)))}</div>
             </div>` : ''}
         </div>
         ${hasAnyPrice
@@ -3438,11 +3438,9 @@ function buildCombinedScheduleView(stack) {
   html += `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">`;
   stack.peptides.forEach((p, pi) => {
     const col = colors[pi];
-    const doseLabel = p.doseAmount ? `${p.doseAmount}${p.doseUnit||'mcg'}` : '';
     html += `<div style="display:inline-flex;align-items:center;gap:5px;background:${col.bg}22;border:1px solid ${col.bg}55;border-radius:20px;padding:3px 10px">
       <div style="width:8px;height:8px;border-radius:50%;background:${col.bg};flex-shrink:0"></div>
       <span style="font-size:12px;font-weight:600;color:var(--text)">${escHtml(catPeptideName(p))}</span>
-      ${doseLabel ? `<span style="font-size:11px;color:${col.text || col.bg};font-family:'JetBrains Mono',monospace;opacity:0.85">${escHtml(doseLabel)}</span>` : ''}
     </div>`;
   });
   html += `</div>`;
@@ -9191,9 +9189,7 @@ function autoPopulateDefaultStacksFromCatalogue() {
       // product via the catalogue picker — their selection is the source of
       // truth and should never be silently overridden by the cost optimiser.
       const bacProds = allProds.filter(cp => /bac|bacterio|water/i.test(cp.name));
-      const totalPeptideVials = stack.peptides.reduce((s, p) => s + (p.vialQty || 1), 0);
-      const mlPerPeptideVial = stack.waterPerVial || 2;
-      const bacMlNeeded = Math.max(totalPeptideVials * mlPerPeptideVial, 1);
+      const bacMlNeeded = Math.max(stackTotalWaterMl(stack), 1);
 
       function _bacMlFromName(name) {
         const m = (name || '').match(/(\d+(?:\.\d+)?)\s*ml\b/i);
