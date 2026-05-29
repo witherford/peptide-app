@@ -4094,13 +4094,40 @@ function pbSyncDraftStack() {
   saveApp();
 }
 
+// Fill the stack-modal category <select>, with a trailing "＋ New category…"
+// sentinel so the user can create a category without leaving the builder.
+function populateCategorySelect(selectedId) {
+  const sel = document.getElementById('sf-category');
+  if (!sel) return;
+  const opts = APP.categories.map(c => `<option value="${c.id}"${selectedId === c.id ? ' selected' : ''}>${escHtml(c.name)}</option>`);
+  if (!APP.categories.length) opts.unshift('<option value="">No categories</option>');
+  opts.push('<option value="__new__">＋ New category…</option>');
+  sel.innerHTML = opts.join('');
+}
+document.getElementById('sf-category')?.addEventListener('change', function() {
+  if (this.value !== '__new__') { this._lastCat = this.value; return; }
+  const name = (prompt('New category name:') || '').trim();
+  if (name) {
+    const id = 'cat-' + uid();
+    APP.categories.push({ id, name });
+    saveApp();
+    if (typeof renderStacks === 'function') renderStacks();
+    populateCategorySelect(id);
+    this._lastCat = id;
+    showToast(`Category “${name}” added`);
+  } else {
+    // Cancelled — revert to the previously selected category.
+    populateCategorySelect(this._lastCat || APP.categories[0]?.id || '');
+  }
+});
+
 function openStackModal(stack, forceCatId) {
   editingStackId = stack?.id || null;
   stackModalTitle.textContent = stack ? 'Edit Stack' : 'Add Stack';
 
-  const sel = document.getElementById('sf-category');
-  sel.innerHTML = APP.categories.map(c => `<option value="${c.id}"${(stack?.categoryId || forceCatId) === c.id ? ' selected' : ''}>${escHtml(c.name)}</option>`).join('');
-  if (!APP.categories.length) sel.innerHTML = '<option value="">No categories</option>';
+  populateCategorySelect(stack?.categoryId || forceCatId);
+  const _catSel = document.getElementById('sf-category');
+  if (_catSel) _catSel._lastCat = _catSel.value;
 
   document.getElementById('sf-name').value   = stack?.name   || '';
   document.getElementById('sf-notes').value  = stack?.notes  || '';
@@ -5046,11 +5073,22 @@ function updateWaterWarning() {
     neededMl += vials * pepWater(p);
   });
 
-  // Parse total bac water ml (e.g. "2 × 10ml" → 20ml, "20ml" → 20)
+  // Available bac water = Σ over all picked products of (qty × ml-per-vial),
+  // where ml-per-vial is parsed from each product's name (e.g. "10ml …" → 10).
   let availableMl = 0;
-  const mBac = bacQtyStr.match(/(\d+)\s*[×x]\s*(\d+(?:\.\d+)?)\s*ml/i);
-  if (mBac) availableMl = parseInt(mBac[1]) * parseFloat(mBac[2]);
-  else { const mSingle = bacQtyStr.match(/(\d+(?:\.\d+)?)\s*ml/i); if (mSingle) availableMl = parseFloat(mSingle[1]); }
+  const bacItems = window._sfBacItems || [];
+  if (bacItems.length) {
+    bacItems.forEach(it => {
+      const mlMatch = (it.name || '').match(/(\d+(?:\.\d+)?)\s*ml/i);
+      const ml = mlMatch ? parseFloat(mlMatch[1]) : 0;
+      availableMl += ml * (it.qty || 1);
+    });
+  } else {
+    // Legacy fallback: parse the single qty string ("2 × 10ml" → 20ml).
+    const mBac = bacQtyStr.match(/(\d+)\s*[×x]\s*(\d+(?:\.\d+)?)\s*ml/i);
+    if (mBac) availableMl = parseInt(mBac[1]) * parseFloat(mBac[2]);
+    else { const mSingle = bacQtyStr.match(/(\d+(?:\.\d+)?)\s*ml/i); if (mSingle) availableMl = parseFloat(mSingle[1]); }
+  }
 
   // Always-visible required-ml pill (only hide when there are no peptides at all)
   if (reqPill) {
@@ -5140,9 +5178,7 @@ function updateNeedleSummary() {
   // The "Stacking (Shared Needle)" checkbox influences both numbers
   // naturally: toggling it on clears stackWith on every peptide, which
   // causes the calc to count groups separately on subsequent re-runs.
-  const perWeekDisplay = perWeekCounts.length ? Math.max(...perWeekCounts) : 0;
   const estTotal = totalNeedles;
-  const weeksVary = perWeekCounts.length > 1 && Math.min(...perWeekCounts) !== perWeekDisplay;
 
   const _existNeedle = document.getElementById('sf-needle-summary');
   if (_existNeedle) _existNeedle.remove();
@@ -5150,12 +5186,9 @@ function updateNeedleSummary() {
   summaryEl.id = 'sf-needle-summary';
   summaryEl.className = 'needle-summary';
   summaryEl.innerHTML = `
-    <div class="needle-summary-title">💉 Needle Estimate (per ${weeks}-week protocol)</div>
+    <div class="needle-summary-title">💉 Total number of needles</div>
     <div class="needle-total">
-      <span>${weeksVary ? 'Busiest week' : 'Per week'}</span><span>${perWeekDisplay}</span>
-    </div>
-    <div class="needle-total">
-      <span>${weeks} week${weeks===1?'':'s'} total</span><span>${estTotal}</span>
+      <span>Total</span><span>${estTotal}</span>
     </div>`;
 
   // Insert before form-actions
@@ -5215,36 +5248,42 @@ function updateTotalPriceSummary() {
   let grandTotal = 0;
   let allHavePrices = true;
 
+  const supplierLabel = s => s === 'uk-peptides' ? 'UK Peptides'
+                            : s === 'anglo-peptides' ? 'Anglo Peptides' : 'Manual';
+
   currentPeptideRows.forEach(p => {
     const qty = Math.max(1, parseInt(p.vialQty) || 1);
     const best = _pbBestPriceForRowName(allProds, p.name || '');
+    // Capacity (mg) for the peptide — catalogue match, else parsed from name.
+    let mg = best?.capacity_mg || null;
+    if (mg == null && p.name) { const m = p.name.match(/(\d+(?:\.\d+)?)\s*mg\b/i); if (m) mg = parseFloat(m[1]); }
+    const capacity = mg != null ? mg + 'mg' : '—';
     if (!best || best.price == null) {
-      lineItems.push({ name: p.name || 'Peptide', qty, unitPrice: null, total: null, supplier: '—', hasPrice: false });
+      lineItems.push({ name: catPeptideName(p), qty, capacity, unitPrice: null, total: null, supplier: '—', hasPrice: false });
       allHavePrices = false;
       return;
     }
     const total = best.price * qty;
     grandTotal += total;
-    const supplier = best.source === 'uk-peptides' ? 'UK Peptides'
-                   : best.source === 'anglo-peptides' ? 'Anglo Peptides'
-                   : 'Manual';
+    const supplier = supplierLabel(best.source);
     supplierTotals[supplier] = (supplierTotals[supplier] || 0) + total;
-    lineItems.push({ name: p.name || 'Peptide', qty, unitPrice: best.price, total, supplier, hasPrice: true });
+    lineItems.push({ name: catPeptideName(p), qty, capacity, unitPrice: best.price, total, supplier, hasPrice: true });
   });
 
   // Bac water — one line per picked product (combinable list)
   (window._sfBacItems || []).forEach(bw => {
     const bacQty = Math.max(1, bw.qty || 1);
+    const mlMatch = (bw.name || '').match(/(\d+(?:\.\d+)?)\s*ml/i);
+    const capacity = mlMatch ? mlMatch[1] + 'ml' : '—';
+    const name = (bw.name || '').replace(/[\s\-–—]+\d+(?:\.\d+)?\s*(mcg|mg|iu|ml)$/i,'').trim() || 'Bacteriostatic Water';
     if (bw.price != null) {
       const total = bw.price * bacQty;
       grandTotal += total;
-      const supplier = bw.source === 'uk-peptides' ? 'UK Peptides'
-                     : bw.source === 'anglo-peptides' ? 'Anglo Peptides'
-                     : 'Manual';
+      const supplier = supplierLabel(bw.source);
       supplierTotals[supplier] = (supplierTotals[supplier] || 0) + total;
-      lineItems.push({ name: bw.name, qty: bacQty, unitPrice: bw.price, total, supplier, hasPrice: true, isBac: true });
+      lineItems.push({ name, qty: bacQty, capacity, unitPrice: bw.price, total, supplier, hasPrice: true, isBac: true });
     } else {
-      lineItems.push({ name: bw.name, qty: bacQty, unitPrice: null, total: null, supplier: '—', hasPrice: false, isBac: true });
+      lineItems.push({ name, qty: bacQty, capacity, unitPrice: null, total: null, supplier: '—', hasPrice: false, isBac: true });
       allHavePrices = false;
     }
   });
@@ -5252,27 +5291,38 @@ function updateTotalPriceSummary() {
   if (!lineItems.length) return;
 
   const fmt = (gbp) => sym + (gbp * rate).toFixed(rate >= 100 ? 0 : 2);
-  const itemsHtml = lineItems.map(it => `
-    <div class="needle-row">
-      <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(it.isBac ? it.name : catPeptideName(it.name))}${it.qty>1?(' × '+it.qty):''}</span>
-        <span style="font-size:9.5px;color:var(--text3)">${escHtml(it.supplier)}${it.hasPrice && it.qty>1?(' · '+fmt(it.unitPrice)+' each'):''}</span>
-      </span>
-      <strong style="font-family:'JetBrains Mono',monospace;color:${it.hasPrice?'var(--text)':'var(--text3)'}">${it.hasPrice ? fmt(it.total) : '—'}</strong>
-    </div>`).join('');
-
-  const supplierLines = Object.entries(supplierTotals).map(([s, gbp]) =>
-    `<div class="needle-row" style="font-size:11px"><span>${escHtml(s)}</span><span style="font-family:'JetBrains Mono',monospace">${fmt(gbp)}</span></div>`
-  ).join('');
+  const td = 'padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top';
+  const tdNum = td + ';text-align:right;font-family:\'JetBrains Mono\',monospace';
+  const rowsHtml = lineItems.map(it => `
+    <tr>
+      <td style="${td};color:var(--text);white-space:normal">${escHtml(it.name)}</td>
+      <td style="${tdNum};color:var(--text2)">${it.qty}</td>
+      <td style="${tdNum};color:var(--text2)">${escHtml(it.capacity)}</td>
+      <td style="${td};color:var(--text2);white-space:nowrap">${escHtml(it.supplier)}</td>
+      <td style="${tdNum};color:var(--text2)">${it.hasPrice ? fmt(it.unitPrice) : '—'}</td>
+      <td style="${tdNum};color:${it.hasPrice?'var(--text)':'var(--text3)'};font-weight:700">${it.hasPrice ? fmt(it.total) : '—'}</td>
+    </tr>`).join('');
+  const thBase = 'padding:6px 8px;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border2)';
 
   const summaryEl = document.createElement('div');
   summaryEl.id = 'sf-total-price-summary';
   summaryEl.className = 'needle-summary';
   summaryEl.innerHTML = `
     <div class="needle-summary-title">💷 Total Price</div>
-    ${itemsHtml}
-    ${supplierLines ? `<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">${supplierLines}</div>` : ''}
-    <div class="needle-total" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:'DM Sans',system-ui,sans-serif">
+        <thead><tr>
+          <th style="${thBase};text-align:left">Name</th>
+          <th style="${thBase};text-align:right">Qty</th>
+          <th style="${thBase};text-align:right">Capacity</th>
+          <th style="${thBase};text-align:left">Supplier</th>
+          <th style="${thBase};text-align:right">Price each</th>
+          <th style="${thBase};text-align:right">Total price</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+    <div class="needle-total" style="border-top:1px solid var(--border2);margin-top:8px;padding-top:8px">
       <span>Total <small style="color:var(--text3);font-weight:400;letter-spacing:0">(Postage not inc)</small></span><span>${fmt(grandTotal)}${allHavePrices ? '' : ' <small style="color:var(--text3);font-weight:400">(partial)</small>'}</span>
     </div>`;
 
@@ -9380,7 +9430,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.18.0';
+  const APP_VERSION = '1.19.0';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
