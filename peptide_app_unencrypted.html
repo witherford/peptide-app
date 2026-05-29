@@ -2790,34 +2790,40 @@ function buildStackCard(stack) {
 
       // Insulin-syringe graphic built from divs (html2canvas-friendly — inline
       // SVG <text>/transforms rasterise unreliably). Fixed 0–100u (1ml) scale.
+      // Needle on the left, plunger on the right.
       function buildSyringeDiv(segments, opts) {
-        const W = 380, BARREL_H = 26, AXIS_Y = 40, x0 = 6, x1 = x0 + W, MAX_U = 100;
+        const W = 360, BARREL_H = 26, AXIS_Y = 40, x0 = 36, x1 = x0 + W, MAX_U = 100;
+        const NEEDLE = 30, ROD = 16, FLANGE = 4;
+        const cy = AXIS_Y - BARREL_H / 2;            // barrel vertical centre
+        const top = AXIS_Y - BARREL_H;               // barrel top
         const knownTotal = segments.reduce((s, g) => s + (g.units || 0), 0);
         const overCap = knownTotal > MAX_U;
-        const px = u => x0 + (Math.min(u, MAX_U) / MAX_U) * W;
+        const px = u => x0 + (Math.min(u, MAX_U) / MAX_U) * W;   // absolute x
         let cum = 0, fills = '';
         segments.forEach(g => {
           if (g.units == null || g.units <= 0) return;
-          const start = px(cum), end = px(cum + g.units);
+          const start = px(cum) - x0, end = px(cum + g.units) - x0; // barrel-relative
           if (end > start) fills += `<div style="position:absolute;left:${start}px;top:0;width:${end-start}px;height:100%;background:${g.color}"></div>`;
           cum += g.units;
         });
         let ticks = '';
-        for (let u = 0; u <= 100; u += 20) {
-          const x = px(u);
-          ticks += `<div style="position:absolute;left:${x}px;top:0;width:1px;height:8px;background:${opts.textMuted}"></div>`;
+        for (let u = 0; u <= 100; u += 10) {
+          const x = px(u), major = u % 20 === 0;
+          ticks += `<div style="position:absolute;left:${x}px;top:0;width:1px;height:${major?8:4}px;background:${opts.textMuted};opacity:${major?1:0.5}"></div>`;
           ticks += `<div style="position:absolute;left:${x}px;top:9px;transform:translateX(-50%);font-size:8px;color:${opts.textMuted};font-family:'JetBrains Mono',monospace">${u}</div>`;
         }
-        for (let u = 10; u < 100; u += 20) {
-          const x = px(u);
-          ticks += `<div style="position:absolute;left:${x}px;top:0;width:1px;height:4px;background:${opts.textMuted};opacity:0.5"></div>`;
-        }
         return `
-        <div style="position:relative;width:${x1 + 34}px;height:${AXIS_Y + 14}px">
-          <div style="position:absolute;left:0;top:${AXIS_Y - BARREL_H}px;width:4px;height:${BARREL_H + 8}px;background:${opts.textMuted};border-radius:2px"></div>
-          <div style="position:absolute;left:${x0}px;top:${AXIS_Y - BARREL_H}px;width:${W}px;height:${BARREL_H}px;border:1.5px solid ${opts.textMuted};border-radius:3px;overflow:hidden;background:${opts.bg}">${fills}</div>
-          <div style="position:absolute;left:${x1}px;top:${AXIS_Y - BARREL_H/2 - 1}px;width:26px;height:2px;background:${opts.textMuted}"></div>
-          <div style="position:absolute;left:0;top:${AXIS_Y}px;width:${x1}px;height:18px">${ticks}</div>
+        <div style="position:relative;width:${x1 + 40}px;height:${AXIS_Y + 14}px">
+          <!-- needle (left) -->
+          <div style="position:absolute;left:${x0 - NEEDLE}px;top:${cy - 1}px;width:${NEEDLE}px;height:2px;background:${opts.textMuted}"></div>
+          <div style="position:absolute;left:${x0 - 6}px;top:${cy - 4}px;width:6px;height:8px;background:${opts.textMuted};border-radius:1px"></div>
+          <!-- barrel -->
+          <div style="position:absolute;left:${x0}px;top:${top}px;width:${W}px;height:${BARREL_H}px;border:1.5px solid ${opts.textMuted};border-radius:3px;overflow:hidden;background:${opts.bg}">${fills}</div>
+          <!-- plunger (right) -->
+          <div style="position:absolute;left:${x1}px;top:${cy - 3}px;width:${ROD}px;height:6px;background:${opts.textMuted}"></div>
+          <div style="position:absolute;left:${x1 + ROD}px;top:${top - 4}px;width:${FLANGE}px;height:${BARREL_H + 8}px;background:${opts.textMuted};border-radius:2px"></div>
+          <!-- tick axis under barrel -->
+          <div style="position:absolute;left:0;top:${AXIS_Y}px;width:${x1 + 20}px;height:18px">${ticks}</div>
         </div>${overCap ? `<div style="font-size:8px;color:#e06b6b;font-family:'JetBrains Mono',monospace;margin-top:-2px">⚠ total ${Math.round(knownTotal*10)/10}u exceeds 100u (1ml)</div>` : ''}`;
       }
 
@@ -2830,7 +2836,7 @@ function buildStackCard(stack) {
           `<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
              <div style="width:9px;height:9px;border-radius:2px;background:${s.color};flex-shrink:0"></div>
              <span style="font-size:11px;color:${textMain};font-weight:600">${escHtml(s.name)}</span>
-             <span style="font-size:10.5px;color:${s.units==null?textMuted:accent};font-family:'JetBrains Mono',monospace">— ${fmtU(s.units)} units</span>
+             <span style="font-size:10.5px;color:${s.units==null?textMuted:accent};font-family:'JetBrains Mono',monospace">${fmtU(s.units)} units</span>
            </div>`).join('');
         return `<div style="display:flex;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid ${border}">
             <div style="flex-shrink:0">${buildSyringeDiv(segs, { textMuted, bg, accent })}</div>
@@ -2843,7 +2849,8 @@ function buildStackCard(stack) {
       }).join('');
       const drawSection = syringeRows ? `<div style="background:${bg2};border:1px solid ${border};border-radius:10px;padding:12px 16px;margin-bottom:16px">
           <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${textMuted};margin-bottom:6px">Draw Per Dose</div>
-          <div style="font-size:9.5px;color:${textMuted};margin-bottom:8px">Insulin syringe scale (100 units = 1ml) · ${exportWaterMl}ml water per vial</div>
+          <div style="font-size:9.5px;color:${textMuted}">Insulin syringe scale (100 units = 1ml)</div>
+          <div style="font-size:9.5px;color:${textMuted};margin-bottom:8px">${exportWaterMl}ml Bacteriostatic water per vial</div>
           ${syringeRows}
         </div>` : '';
 
