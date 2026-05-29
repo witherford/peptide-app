@@ -191,7 +191,6 @@
     }
     .stack-card-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
     .stack-card-title { font-size: 15px; font-weight: 600; flex: 1; line-height: 1.3; }
-    .stack-card-retailer { font-size: 11px; font-weight: 500; letter-spacing: 0.02em; margin-bottom: 8px; }
     .stack-actions { display: flex; gap: 4px; flex-shrink: 0; }
     .stack-action {
       background: var(--bg3); border: 1px solid var(--border);
@@ -2577,15 +2576,12 @@ function buildStackCard(stack) {
       </div>
     </div>
     ${stack.notes ? `<div style="font-size:12px;color:var(--text2);margin:2px 0 6px;line-height:1.4">${escHtml(stack.notes)}</div>` : ''}
-    <div class="stack-card-retailer" style="color:var(--accent)">${stack.peptides.map(p=>escHtml(catPeptideName(p))).join(' + ')}</div>
     <ul class="stack-stats">
       ${stack.peptides.map(p => {
         const col = getColorById(p.color);
-        const doseStr = p.doseAmount ? `${p.doseAmount} ${p.doseUnit || 'mcg'}` : (p.dose || '');
-        const schedStr = p.schedule || (p.days?.length ? p.days.map(d=>['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d]).join('+') : '');
         return `<li>
           <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${col.bg};flex-shrink:0"></span>
-          <span style="font-weight:600;color:var(--text)">${escHtml(catPeptideName(p))}</span>${doseStr ? `<span style="color:var(--text3)">·</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px">${escHtml(doseStr)}</span>` : ''}
+          <span style="font-weight:600;color:var(--text)">${escHtml(catPeptideName(p))}</span>
         </li>`;
       }).join('')}
     </ul>`;
@@ -2995,7 +2991,7 @@ function buildStackBodyHtml(stack) {
   function catPriceHtml(priceGbp, qty) {
     if (priceGbp == null) return '<span style="color:var(--text3);font-size:11px">—</span>';
     const total = priceGbp * qty * rate;
-    return `<span class="price-live"><span class="price-dot"></span>${sym}${total.toFixed(rate>=100?0:2)}</span>`;
+    return `<span class="price-live" style="font-weight:700;color:var(--text)"><span class="price-dot"></span>${sym}${total.toFixed(rate>=100?0:2)}</span>`;
   }
 
   const rows = stack.peptides.map(p => {
@@ -3025,7 +3021,7 @@ function buildStackBodyHtml(stack) {
       : '—';
 
     return `<tr>
-      <td style="font-weight:600">${escHtml(catPeptideName(p))}</td>
+      <td>${escHtml(catPeptideName(p))}</td>
       <td class="sm">${escHtml(qtyDisp)}</td>
       <td class="r">${priceCell}</td>
       <td class="c">${linkCell}</td>
@@ -3060,7 +3056,7 @@ function buildStackBodyHtml(stack) {
     ? `<a class="lnk" href="${escHtml(bacBuyUrl)}" target="_blank" rel="noopener">Go to ${escHtml(bacRetailerLabel)} ↗</a>`
     : '—';
   const bacRow = stack.bacWater ? `<tr class="water-row">
-    <td style="font-weight:600">${escHtml(bacProductName)}</td>
+    <td>${escHtml(bacProductName)}</td>
     <td class="sm">${escHtml(bacQtyDisp)}</td>
     <td class="r">${bacPriceCell}</td>
     <td class="c">${bacLinkCell}</td>
@@ -3143,14 +3139,14 @@ function buildStackSummaryPanel(stack) {
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
       <div style="width:8px;height:8px;border-radius:2px;background:${col.bg};flex-shrink:0;margin-top:4px"></div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;color:var(--text)">${escHtml(catPeptideName(p))}</div>
+        <div style="font-size:12px;font-weight:400;color:var(--text)">${escHtml(catPeptideName(p))}</div>
         <div style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-top:2px">🧪 ${escHtml(qtySummary)}</div>
-        ${(doseLabel || unitsStr) ? `<div style="font-size:10.5px;color:var(--text3);margin-top:1px;font-family:'JetBrains Mono',monospace">${doseLabel ? '💉 '+escHtml(doseLabel) : ''}${doseLabel && unitsStr ? ' · ' : ''}${unitsStr ? `<span style="color:var(--blue);font-weight:600">🔬 ${escHtml(unitsStr)} to draw</span>` : ''}</div>` : ''}
+        ${(doseLabel || unitsStr) ? `<div style="font-size:11px;color:var(--text2);margin-top:1px;font-family:'JetBrains Mono',monospace">${doseLabel ? '💉 '+escHtml(doseLabel) : ''}${doseLabel && unitsStr ? ' · ' : ''}${unitsStr ? '🔬 '+escHtml(unitsStr)+' to draw' : ''}</div>` : ''}
       </div>
       <div style="text-align:right;flex-shrink:0">
         ${lineTotal != null
-          ? `<div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--green)">${sym}${lineTotal.toFixed(rate>=100?0:2)}</div>
-             <div style="font-size:9.5px;color:var(--text3)">${sym}${(unitPrice||0).toFixed(rate>=100?0:2)} × ${vq}</div>`
+          ? `<div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--text)">${sym}${lineTotal.toFixed(rate>=100?0:2)}</div>
+             <div style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace">${sym}${(unitPrice||0).toFixed(rate>=100?0:2)} × ${vq}</div>`
           : `<div style="font-size:11px;color:var(--text3)">—</div>`
         }
       </div>
@@ -3172,13 +3168,13 @@ function buildStackSummaryPanel(stack) {
       bacLine = `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
         <div style="width:8px;height:8px;border-radius:2px;background:var(--blue);flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;color:var(--text)">Bacteriostatic Water</div>
+          <div style="font-size:12px;font-weight:400;color:var(--text)">Bacteriostatic Water</div>
           <div style="font-size:11px;color:var(--text2);margin-top:2px;font-family:'JetBrains Mono',monospace">${escHtml(stack.bacWater.qty)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:1px">${mlPV}ml per peptide vial · ${(bvq * (parseFloat((stack.bacWater.qty||'').match(/[×x]\s*(\d+(?:\.\d+)?)\s*ml/i)?.[1] || mlPV)) || 0).toFixed(0)}ml total</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:1px;font-family:'JetBrains Mono',monospace">${mlPV}ml per peptide vial · ${(bvq * (parseFloat((stack.bacWater.qty||'').match(/[×x]\s*(\d+(?:\.\d+)?)\s*ml/i)?.[1] || mlPV)) || 0).toFixed(0)}ml total</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--green)">${sym}${bacTotal.toFixed(rate>=100?0:2)}</div>
-          <div style="font-size:9.5px;color:var(--text3)">${sym}${(bestBac.price * rate).toFixed(rate>=100?0:2)} × ${bvq}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--text)">${sym}${bacTotal.toFixed(rate>=100?0:2)}</div>
+          <div style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace">${sym}${(bestBac.price * rate).toFixed(rate>=100?0:2)} × ${bvq}</div>
         </div>
       </div>`;
     }
@@ -3226,7 +3222,7 @@ function buildStackSummaryPanel(stack) {
   return `
     <div style="margin:0;border-top:2px solid var(--border2);background:var(--bg3)">
       <div style="padding:10px 14px 0">
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:2px">📋 Stack Summary</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:2px">📋 Stack Summary</div>
       </div>
       <div style="padding:0 14px">
         ${peptideLines}
@@ -3256,7 +3252,7 @@ function buildStackSummaryPanel(stack) {
         ${hasAnyPrice
           ? `<div style="padding:10px 14px;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
                <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2)">Price est.<span style="color:var(--text3);font-weight:400;letter-spacing:0;text-transform:none;margin-left:6px">(Postage not inc)</span></div>
-               <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px;color:var(--green)">${sym}${grandTotal.toFixed(rate>=100?0:2)}</div>
+               <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px;color:var(--text)">${sym}${grandTotal.toFixed(rate>=100?0:2)}</div>
              </div>`
           : `<div style="padding:10px 14px;border-top:1px solid var(--border2);font-size:11px;color:var(--text3);font-style:italic">Add products to Catalogue to see prices</div>`
         }
@@ -9363,7 +9359,7 @@ document.addEventListener('keydown', e => {
   //   - Show the latest version under the button
   //   - If a newer version is available, unregister the SW, clear caches,
   //     and force a hard reload so the user picks up the new build.
-  const APP_VERSION = '1.16.0';
+  const APP_VERSION = '1.16.1';
   (function initVersionUI(){
     const badge = document.getElementById('appVersionBadge');
     if (badge) badge.textContent = 'v' + APP_VERSION;
